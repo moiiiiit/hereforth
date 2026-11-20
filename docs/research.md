@@ -1,0 +1,42 @@
+# macOS and integration research
+
+Investigated November 20, 2026. Provider capabilities below come from product documentation. The local checks at the end identify what has been exercised on a Mac.
+
+## Mac application
+
+| Option | Why use it | Cost specific to Hereforth |
+| --- | --- | --- |
+| SwiftUI and AppKit | A native split view maps directly to Home, tasks, and source passages. File import, Keychain, and OS permissions live on the same platform. | A future Windows app needs a separate UI. Distribution and the permissions for driving other apps need testing on real Macs. [Apple file access](https://developer.apple.com/documentation/security/accessing-files-from-the-macos-app-sandbox) |
+| Tauri 2 | A web UI could be reused across desktops, and a Rust backend could integrate a transcript parser such as txcript. | Adds a frontend/backend bridge and packaging for each bundled helper. Revisit if a second desktop platform becomes a near-term requirement. [Tauri sidecars](https://v2.tauri.app/develop/sidecar/) |
+| Electron | A TypeScript team can share UI components with a remote web client. A main process can manage local integrations. | Shipping Chromium and Node adds a runtime to maintain. Privileged Mac operations still need a narrow interface to the renderer. [Electron process model](https://www.electronjs.org/docs/latest/tutorial/process-model) |
+
+**Recommendation.** Start with SwiftUI and the system SQLite library. Prototype file imports with the native picker. App Sandbox is required for Mac App Store distribution, and user-selected file access has limits on launching external binaries. Evaluate Developer ID signing and notarization for direct distribution before committing to an installed-CLI integration. Signing and OS permission grants are separate steps. [App Sandbox](https://developer.apple.com/documentation/xcode/configuring-the-macos-app-sandbox) · [Developer ID](https://developer.apple.com/developer-id/) · [SQLite FTS5](https://sqlite.org/fts5.html)
+
+## Providers and existing conversations
+
+| Source | First integration to try | Capability to verify |
+| --- | --- | --- |
+| ChatGPT | Use Sign in with ChatGPT for eligible Plus or Pro plan usage in the local app. Send selected context via streaming Responses with storage disabled. Import existing chats from an owner-selected export. | Sign-in grants inference. Web conversation history needs a separate path. A Hereforth task ID, Codex thread ID, and web chat URL identify different objects. Prove account eligibility and a completed turn before promising no-key setup. [Sign-in](https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt) · [Preview limits](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations) · [Exports](https://help.openai.com/en/articles/7260999-exporting-your-chatgpt-history-and-data) |
+| Claude | Import a Claude export. For a native Claude Code session, hand off to the official, unmodified CLI with the user's own sign-in. For model responses embedded in Hereforth, use Anthropic's documented API-key or cloud-provider path. | Test opening and resuming a CLI session under the distribution terms. Anthropic reserves subscription OAuth for its own apps and restricts routing third-party requests through consumer credentials. Treat a Claude web chat as its own destination. [Claude Code terms](https://code.claude.com/docs/en/legal-and-compliance) · [Claude exports](https://support.claude.com/en/articles/9450526-export-your-claude-data) |
+| Cursor | Evaluate txcript for read-only import of selected IDE sessions. Use the official Cursor CLI for signed-in coding tasks when installed. | Test IDE and CLI history independently. Confirm which IDs can be resumed, how edits affect a later import, and what happens if an installed Cursor version changes its storage format. [Cursor CLI](https://cursor.com/docs/cli/overview) · [Transcript compatibility](https://api.skillsync.com/docs/transcript-support) |
+| Granola | Use the first-party MCP connector with browser authorization. Retrieve a selected meeting with its ID, date, and available notes. | Basic covers the last 30 days of notes. Paid plans add full history and transcripts. Enterprise access depends on the workspace administrator. Show whether a citation refers to notes or spoken words. [Granola MCP](https://www.granola.ai/blog/granola-mcp) |
+
+For a new ChatGPT or Claude web chat, first test a visible handoff that opens the provider's new-chat page and offers a short task brief to copy. Let the user associate the resulting conversation URL with the task. Test the actual destination and branch before claiming automatic creation or round-trip sync. The txcript compatibility table lists both consumer chat products as sources only. For sites that support browser integration, evaluate an extension scoped to a user-selected tab. Browser access and model billing remain independent. [Session support](https://api.skillsync.com/docs/transcript-support) · [Safari extension permissions](https://developer.apple.com/documentation/safariservices/managing-safari-web-extension-permissions)
+
+## Existing components worth trying
+
+- **Skillsync / txcript** provides an Apache-2.0 library and CLI for transcript conversion. Compare its exported messages and locators against the same hand-checked fixtures as the native importer. Use it first where formats are costly to maintain, especially Cursor. [Project and format documentation](https://github.com/skillsynchq/txcript)
+- **OpenClaw** already offers a persistent main session, browser control, and remote access. Evaluate it as an optional owner-operated execution backend. Its multi-user documentation treats operators of the same agent as mutually trusted. Hereforth needs a narrower teammate role for scoped questions and access requests. [Main session](https://docs.openclaw.ai/concepts/main-session) · [Trust model](https://docs.openclaw.ai/concepts/multi-user)
+- **Dodaios** is a useful end-to-end comparison for one assistant directing a user's installed agents. Compare its handoff and resume experience against the first Hereforth task workflow. [Product](https://dodaios.ai/)
+
+## Remote access
+
+Start with owner access over Tailscale Serve to a loopback-only service. Authenticate the paired client at the app layer as well. Tailscale can supply a user identity for a connection, while Hereforth decides which conversations, sources, and actions that identity may use. Use a separate pairing flow with authenticated TLS for ordinary LAN use. The Mac must be awake and reachable to execute local work. [Tailscale Serve and identity headers](https://tailscale.com/docs/features/tailscale-serve)
+
+For desktop actions, prefer a documented app command or an explicit document-open action. Evaluate Accessibility for interacting with app UI and ScreenCaptureKit when an owner needs a visual preview. Test permission denial, revocation, and screen lock before adding these capabilities to remote sessions. Route teammate IT requests to the system that owns the entitlement. Validate billing and account eligibility for multi-user requests separately from the owner's model login. [ScreenCaptureKit](https://developer.apple.com/documentation/screencapturekit) · [Claude credential guidance](https://code.claude.com/docs/en/legal-and-compliance)
+
+## Local feasibility checks
+
+On an Apple Silicon Mac running macOS 26.6.2 with Xcode 27.2 and Swift 6.4.2, a disposable Swift program imported SwiftUI and SQLite3, compiled a NavigationSplitView, indexed two synthetic session passages with FTS5, and returned the expected source session for a keyword query. This establishes native compilation and basic retrieval on one development machine.
+
+The installed Codex CLI exposed its app-server command, and Claude Code exposed print and resume options. Neither Cursor CLI command name was on the shell path. Live provider sign-in, metered inference, GUI interaction, real account imports, and paired-device access remain implementation experiments.
