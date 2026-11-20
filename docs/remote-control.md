@@ -1,0 +1,42 @@
+# Controlling Hereforth remotely
+
+Proposed owner experience, November 20, 2026.
+
+From a phone, say “Resume the launch draft.” The Mac returns the relevant task, shows progress, and offers the draft for review. Closing the phone should leave the draft in progress. If the next step is to send it, the phone should show the destination and the exact version to send. If the owner needs to interact with an unfamiliar app personally, they can open a separate desktop session.
+
+## First release
+
+Use a phone-friendly web client over Tailscale Serve. Make the Mac authoritative for task state and approvals. Start with four owner operations: ask, start or resume a bounded task, inspect progress, and cancel. Teach one task to return a draft. A phone refresh reads the existing task ID. The remote client can reconnect without starting duplicate work. An asleep or offline Mac appears unavailable. Scope the first pilot to an awake Mac with the owner logged in.
+
+Tailnet grants restrict which devices can reach the service. Serve supplies HTTPS to a loopback backend. Tailscale can relay encrypted connections when a direct path fails behind NAT, so ordinary text control can work while the owner is on cellular. Keep a separate application login for Hereforth. Teammate knowledge access and owner controls use distinct roles enforced at every operation. A Slack message, an imported transcript, and an instruction displayed on a webpage all enter the system as content. Only the Mac's executor can resolve an authorized operation. [Tailscale connection types](https://tailscale.com/docs/reference/connection-types) · [Serve identity and proxy behavior](https://tailscale.com/docs/features/tailscale-serve) · [Teammate access design](teammate-knowledge.md)
+
+## Making authorization usable
+
+- **Enroll the owner at the Mac.** Display a short-lived, single-use pairing invitation for the private HTTPS site. Confirm owner enrollment on the Mac and register a passkey for that origin. Use an established WebAuthn implementation to verify the challenge, expected origin, relying-party ID and user verification. Offer a local list of credentials and sessions with revoke controls. Passkeys may sync across devices. If a future feature requires one specific handset, evaluate a native device-bound key. [WebAuthn](https://www.w3.org/TR/webauthn-3/)
+- **Approve a useful amount of work at once.** Let the owner authorize “For 30 minutes, read these two project sources and write revisions of this Hereforth draft.” Store the allowed source IDs, destination, operation, expiry and initiating owner. The Mac checks the grant before each effect. The owner can close the phone, return later and revoke the grant. A new recipient, a different project, or publication requires a new decision. Revoke or cancel stops pending effects and prevents more work under that grant.
+- **Bind sensitive approvals to the actual change.** The Mac stages an immutable action with the account, recipient, content version, expiry and one-use ID. Render the preview from that record on the authenticated owner page. Associate a fresh verification challenge with the record. At execution, atomically claim it, recheck authority and submit that version. If anything changes, show a new preview. If a downstream service times out after submission, use its idempotency key or reconcile the outcome before offering a retry. A passkey verifies the human's presence for a challenge. Hereforth is responsible for showing them what they are approving.
+- **Use isolation for unattended work.** Some tasks genuinely need a browser and freedom to try several steps. Evaluate a disposable guest workspace with its own browser profile, a few explicitly shared inputs, and an output folder. The owner reviews the results or performs an authenticated final step on the host. A guest requires its own setup for sites that need login. Keeping the owner's personal browser profile and Keychain on the host limits what a mistaken task can touch. Evaluate this once real workflows outgrow document and app-specific commands. [Apple Virtualization shared directories](https://developer.apple.com/documentation/virtualization/shared-directories)
+
+## When someone actually needs the screen
+
+For a Mac-to-Mac pilot, use Apple's existing Screen Sharing. The owner enables it locally, selects the allowed Mac account, and limits network access to their devices. Screen Sharing grants broad interactive control independently of Hereforth's task grants. Ending the native session or revoking that access uses Apple's controls. Verify reachability and macOS sharing settings on every network interface used by the pilot. This path gives the owner manual control and keeps teammate questions separate. [Apple Screen Sharing](https://support.apple.com/guide/mac-help/mh11848/mac)
+
+For an iPhone user who needs to see one window, prototype view-only capture with ScreenCaptureKit's system picker. A selected capture window defines what can be seen. macOS Accessibility permission for input is a separate, broader grant. If a later native feature adds owner input, require explicit local setup, one controller at a time, a visible local stop control, and a short lease. Stop input on disconnect, lock, target change, local takeover or revoked permission. A selected-window video feed alone cannot enforce which application receives a keystroke. [Apple content picker](https://developer.apple.com/documentation/screencapturekit/sccontentsharingpicker) · [Apple Accessibility settings](https://support.apple.com/guide/mac-help/mh43185/mac)
+
+## Alternatives worth keeping
+
+| Situation | Proposed route | What would justify the work |
+| --- | --- | --- |
+| Same LAN, no Tailscale | Paired native client over authenticated TLS, using local discovery and explicit host verification. Reuse the owner operation and approval records. | Users need offline LAN access or cannot enroll devices in a tailnet. |
+| Neither device can accept inbound traffic and the user cannot install Tailscale | Evaluate an optional outbound relay. Pair endpoint identities independently, use an established end-to-end encrypted transport and keep authorization on the Mac. Account for the relay seeing connection metadata. Browser clients need a trusted delivery origin, since a relay serving mutable client code would also be trusted with plaintext. | Demonstrated onboarding demand from users outside tailnets. Model relay compromise, revocation, and lost-device recovery before choosing a protocol. |
+| Interactive phone video is essential | Evaluate WebRTC with authenticated signaling and TURN fallback for media. Authenticate the remote peer against the paired identity. Keep Hereforth's task and approval records independent of the video connection. | Manual desktop interaction is frequent enough to justify video bandwidth, latency testing, and the additional Mac permissions. [WebRTC security architecture](https://www.rfc-editor.org/rfc/rfc8827.html) · [TURN](https://www.rfc-editor.org/rfc/rfc8656.html) |
+
+## Pilot acceptance
+
+1. On cellular, use an enrolled phone to resume a task on an awake Mac. Interrupt the connection and reconnect. Verify one task and one draft revision per accepted operation.
+2. Approve a scoped drafting task, put the phone away, and retrieve the result later. Verify that publishing it, changing its destination, or acting after expiry requires fresh authority.
+3. Change a draft after its approval preview. Verify that the old approval cannot send the edited draft. Repeat after device revocation and after a simulated uncertain delivery.
+4. Give a teammate access to the draft's published status. Verify that their browser can read the status and submit an IT request, and that all owner action endpoints reject that identity.
+5. Exercise lock, sleep, reconnect, and local takeover. The phone should distinguish an unreachable Mac from a task awaiting local permission. Reconnecting may resume status updates. Live input requires a new control lease.
+
+These are design choices and proposed device tests. The next prototype can exercise the main workflow using a draft stored entirely inside Hereforth, with no screen capture, Accessibility grant, or external message delivery.

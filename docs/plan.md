@@ -28,6 +28,8 @@ Use one SwiftUI app and one SQLite database under Application Support. Home and 
 
 ## First implementation decisions to test
 
+For milestone 3, the [remote control design](remote-control.md) specifies owner pairing, scoped task approvals, manual desktop handoff, and a two-device pilot over cellular.
+
 - **Provider round trip.** Test registration for the local prototype with an eligible account, one streamed response, cancellation, expiry, and reconnect. An API key entered by the owner is the fallback when plan access is unavailable. Store Hereforth credentials in Keychain.
 - **Import accuracy.** Build small fixtures for branching, edited messages, repeated imports, missing attachments, and deletion. A citation should still resolve after a title changes. Record whether an old answer used an earlier version of a message.
 - **Teammate access.** Start the two-person retrieval experiment alongside the personal memory milestone. Use owner-reviewed, versioned project notes for the first tailnet browser pilot. Test two callers asking the same question, following citations, and losing access mid-answer. [Sharing design and acceptance criteria](teammate-knowledge.md)

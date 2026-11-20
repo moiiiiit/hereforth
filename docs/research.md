@@ -31,6 +31,8 @@ For a new ChatGPT or Claude web chat, first test a visible handoff that opens th
 
 ## Remote access
 
+The [remote control study](remote-control.md) compares owner task control over Tailscale, native Screen Sharing, a paired LAN client, and optional relays for users outside a tailnet.
+
 The [teammate knowledge study](teammate-knowledge.md) compares shareable notes, live source access, and a synchronized team index. It includes a reproducible two-user retrieval experiment and the trade-offs of a tailnet browser, paired LAN client, MCP, and Slack DMs.
 
 Start with owner access over Tailscale Serve to a loopback-only service. Authenticate the paired client at the app layer as well. Tailscale can supply a user identity for a connection, while Hereforth decides which conversations, sources, and actions that identity may use. Use a separate pairing flow with authenticated TLS for ordinary LAN use. The Mac must be awake and reachable to execute local work. [Tailscale Serve and identity headers](https://tailscale.com/docs/features/tailscale-serve)
