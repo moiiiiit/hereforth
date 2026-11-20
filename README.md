@@ -6,4 +6,4 @@ Imagine asking, “What did we decide about the launch yesterday? Pick up the dr
 
 The project is in design and feasibility research. The intended release is open source. The first milestone is a native Mac app that can answer a question using evidence from two conversations and take you to both passages.
 
-Read the [implementation plan](docs/plan.md) and [integration research](docs/research.md).
+Read the [implementation plan](docs/plan.md), [integration research](docs/research.md), and [design for sharing personal knowledge with teammates](docs/teammate-knowledge.md).
