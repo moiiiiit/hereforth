@@ -1,0 +1,48 @@
+# Keeping the Mac available and tracking model usage
+
+Product and engineering proposal, November 20, 2026. A typical use case is to leave the Mac available during team hours so colleagues can get an update asynchronously. The owner should be able to tell why the Mac is awake, when it will sleep again, and how much model usage those updates consumed.
+
+## Keep Awake
+
+Put a control in the menu bar and the paired owner's remote view. Show the active reason, expiry, power source, and whether the display may sleep. If several reasons overlap, list them individually. Closing the phone leaves an explicitly authorized task or availability window running on the Mac.
+
+| Mode | Owner control | End condition |
+| --- | --- | --- |
+| Timer | Choose 15 minutes, an hour, a custom duration, or a local end time. Extend or stop from the menu or phone. | Deadline or owner cancellation. |
+| While working | Attach to one task, or opt in for all running tasks. Allow a short, configurable grace period when waiting for owner input. | Completion, failure, cancellation, or expiry of the waiting period. |
+| Team hours | Choose weekdays, time zone, start and end times, and an AC-only setting. Support overnight windows, “skip today,” and pause until a date. | End of the window, schedule pause, or a power rule. Re-evaluate after wake, clock changes, and travel. |
+| Until stopped | Offer a deliberate manual override for a desk Mac or docked laptop. Show elapsed time and a prominent Stop button. | Owner stop, app quit, or a power rule. After relaunch require an explicit choice to restore a manual override. |
+
+Let the screen turn off during background work. Offer a separate, expiring **Keep display on** option for a presentation or attended session. Preserve normal screen locking. Default recurring availability to AC power. On battery, offer an explicit time cap and a configurable charge floor, proposed at 25%. Show which rule suspended the request. Re-evaluate eligible schedules on AC reconnect. **Stop all** releases Hereforth's active assertions and suppresses the current timer, task, and schedule occurrences so the next timer tick cannot immediately reactivate them. Only the owner controls these settings.
+
+Use an in-process IOKit idle-system assertion with a human-readable reason. Hold a separate display assertion only when requested. Track independent reasons in the app, release each underlying assertion when the last eligible reason ends, and renew bounded OS timeouts while the owning process is healthy. Listen for power-source changes. On quit or restart, reconcile saved schedules and task state against the current time. An idle-sleep assertion applies to an already-awake Mac. Lid closure, explicit Sleep, and low battery can still put it to sleep. A schedule that starts during sleep takes effect at the next wake. A remote client should display last seen when it cannot determine the cause of disconnection. [Apple idle-system assertion](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep) · [Assertion timeout](https://developer.apple.com/documentation/iokit/kiopmassertiontimeoutactionrelease) · [Power-source notifications](https://developer.apple.com/documentation/iokit/iopowersources_h)
+
+KeepingYouAwake is an open-source precedent for menu-bar timers and battery cutoffs. Hereforth's reason to own this control is that it knows when a task finishes or an availability window ends. [KeepingYouAwake](https://github.com/newmarcel/KeepingYouAwake)
+
+## Model usage
+
+Start metering with the first provider integration. Give each task a compact usage line and the owner a Usage view with today, week, billing period, and custom date ranges. Filter by account, provider, model, project, task, and purpose such as personal chat, drafting a team update, or answering a teammate. Show input, output, cached tokens when reported, request count, and the number of calls with incomplete accounting. Display the active turn's estimated context size alongside the model's context limit in the task view. Repeated input across turns contributes repeatedly to usage.
+
+| Question | Data source and display |
+| --- | --- |
+| What did Hereforth use? | Save one local receipt per provider request attempt. Prefer final provider-reported usage. For streams, reconcile cumulative snapshots by request ID. Count a second billable retry as a separate attempt. Keep a missing receipt as unknown, including after cancellation. Importing an old transcript creates a knowledge source and incurs no historical usage attribution. |
+| How much of my subscription remains? | Where supported, show the provider's account-level window, used percentage, reset time, and last refresh. Other apps may consume the same allowance. A stale snapshot carries its timestamp. When no counter is available, link to the provider's usage settings. |
+| How much did that task cost? | For API billing, prefer a provider-reported charge matched to the request. Otherwise show an estimate using a dated price table with model, tier, currency, token classes, and known tool charges. Flag missing price components. Subscription usage gets its plan label and quota window. Any optional API-price comparison gets its own label. |
+| Can I limit usage? | Offer threshold notifications and an optional pause before the next model call, per task or billing period. For concurrent jobs reserve headroom before dispatch and settle on the receipt. Give uncertain usage an explicit pending state. Describe local limits as dispatch controls. An already running call can finish above an estimate. For scheduled updates, also offer a maximum number of calls per run. |
+
+Keep request IDs, timestamps, token classes, price version, billing mode, purpose and attribution in SQLite. Avoid storing prompts in usage records. Offer owner-only CSV export, retention settings, and deletion. Teammates see their request status and shared evidence. Attribute shared-update generation once to the project even if ten readers open it. Serving a saved update costs zero new inference calls.
+
+### Available evidence by integration
+
+- **ChatGPT and Codex.** Responses can return input and output totals with cached-input and reasoning-output subdivisions. Use totals once. Codex app-server also exposes thread usage events and account rate-limit snapshots for supported configurations. Discover capabilities per connection and link to ChatGPT Usage settings for plan management. [OpenAI usage accounting](https://developers.openai.com/cookbook/articles/per_run_spending_controller_responses_api) · [Codex app-server](https://developers.openai.com/codex/app-server) · [ChatGPT plan usage](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions)
+- **Claude.** For the Messages API, total input includes ordinary input, cache creation and cache reads. Price the buckets using the applicable rates. For a user-enabled Claude Code integration, its status data can supply session counters and available plan windows with reset times. Treat session totals as cumulative. Preserve existing user configuration when evaluating an integration. [Anthropic token breakdown](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) · [Claude Code status fields](https://code.claude.com/docs/en/statusline)
+- **Cursor and browser sessions.** A team with an authorized Cursor Admin API integration may obtain usage events and charged amounts. Use the billing dashboard when a personal connection exposes less. For browser handoffs or Granola note fetches, record the operation separately and leave unobserved third-party inference unknown. CodexBar is an open-source reference for presenting multiple providers' windows and source coverage. [Cursor Admin API](https://cursor.com/docs/account/teams/admin-api) · [Cursor billing](https://cursor.com/help/account-and-billing/overages) · [CodexBar](https://github.com/steipete/CodexBar)
+
+## Feasibility and acceptance
+
+On the development Mac, a short native program acquired a system-only IOKit assertion with a three-second release timeout and explicitly released it. The installed Codex app-server generated a schema containing thread token-usage events, rate-limit reads and rate-limit updates. These checks establish the API surface. Overnight behavior and live provider accounting need device and account tests.
+
+1. Overlap a task and timer, cancel one, and verify the other still holds. Unplug across the charge floor, change the schedule across daylight saving time, stop all during a scheduled window, and restart after its end. Check that the display locks and sleeps independently.
+2. Feed a synthetic OpenAI receipt with 100 input tokens (40 cached) and 30 output tokens (10 reasoning). The total is 130. For a Claude receipt with 60 ordinary, 10 cache-write, 30 cache-read and 20 output tokens, the total is 120. Redelivering either receipt leaves totals unchanged.
+3. Replay a cumulative stream, two simultaneous requests near a budget, one interrupted request with missing usage, and a later provider correction. Verify totals, pending usage, alert deduplication, and prevention of new dispatch after a configured pause.
+4. Publish one approved team update during team hours, close the phone, and read it as two teammates. Verify one generation receipt, two reads, an unchanged draft timestamp, and release of the task's awake reason when the work completes.

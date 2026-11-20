@@ -33,6 +33,8 @@ For an iPhone user who needs to see one window, prototype view-only capture with
 
 ## Pilot acceptance
 
+The paired owner can inspect why the Mac is awake, extend a timer, or release it remotely. Show the last confirmed expiry and last-seen time when the Mac is unreachable. A stopped or budget-paused task should release its task-specific sleep assertion after the configured grace period. [Power and usage behavior](availability-and-usage.md)
+
 1. On cellular, use an enrolled phone to resume a task on an awake Mac. Interrupt the connection and reconnect. Verify one task and one draft revision per accepted operation.
 2. Approve a scoped drafting task, put the phone away, and retrieve the result later. Verify that publishing it, changing its destination, or acting after expiry requires fresh authority.
 3. Change a draft after its approval preview. Verify that the old approval cannot send the edited draft. Repeat after device revocation and after a simulated uncertain delivery.

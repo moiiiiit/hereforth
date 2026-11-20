@@ -8,6 +8,14 @@ Home is an ongoing conversation with one assistant. Ask anything there. An invol
 
 The Mac owns the conversations, search index, and task state. With a hosted model, selected messages and evidence travel to the provider for that turn. The UI should identify the provider and let the owner inspect the sources used. Model sign-in, importing past chats, and opening a new chat in another product each need their own user flow.
 
+## Replacing routine status syncs
+
+Pilot with one recurring project check-in. Before the next occurrence, ask Hereforth “What changed since our last update, what's blocked, and who needs to decide?” Draft a short update from the prior published version and newer evidence. Include the time covered, links to the evidence the audience can read, the person who could unblock the work, and any decision needed. An unknown owner or stale status should stay visible as such. Have the project owner review and publish the update to named teammates. Each reader can ask follow-up questions against their own grants. [Teammate sharing design](teammate-knowledge.md)
+
+Show readers which questions have already been answered and which still need discussion, within their authorized audience. Let the organizer mark the occurrence **resolved asynchronously**, **discussion needed**, or **held as usual**. When discussion is needed, use the open questions as the agenda. Record the outcome explicitly. A generated update or a missed calendar event alone cannot establish that a meeting was avoided.
+
+After several occurrences, compare organizer-confirmed meetings replaced or shortened, aggregate attendee-minutes saved, time spent preparing updates, and questions still waiting for an answer. Use the team's feedback on missing or stale evidence to decide what to connect next.
+
 ## Proposed first build
 
 Use one SwiftUI app and one SQLite database under Application Support. Home and task conversations share a store. For the first build, the app runs while open and calls the model directly. Add a helper process when a specific feature needs to outlive the window or interact with another application.
@@ -27,6 +35,8 @@ Use one SwiftUI app and one SQLite database under Application Support. Home and 
 | 4. Teammate questions and requests | Give each caller an identity and explicit access to particular sources or projects. Apply those grants before retrieval, including summaries, citations, and cached results. Record who requested an action and who approved it. | A colleague receives a cited project update from a shared source. A private chat on the same topic stays private. An IT access request goes to the authorized approver. Revoking a grant takes effect on the next query. |
 
 ## First implementation decisions to test
+
+Instrument model usage in milestone 1. Add task-linked and timed Keep Awake to the owner remote pilot in milestone 3. Add scheduled team availability, reviewed update reuse, and per-project usage reporting for the asynchronous check-in pilot in milestone 4. [Keep Awake and usage controls](availability-and-usage.md)
 
 For milestone 3, the [remote control design](remote-control.md) specifies owner pairing, scoped task approvals, manual desktop handoff, and a two-device pilot over cellular.
 

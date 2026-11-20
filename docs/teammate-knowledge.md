@@ -8,6 +8,8 @@ For example, the owner can publish “The launch is waiting on the localization 
 
 ## What can be shared
 
+For a recurring status sync, publish a dated update with changes since the previous edition, blockers, and decisions awaiting an owner. Give readers a link to the approved revision. Follow-ups can reuse the published evidence, and unanswered questions can become the agenda if the team still needs to meet. [Check-in pilot and outcome measures](plan.md#replacing-routine-status-syncs)
+
 | Option | What the teammate gets | When it fits |
 | --- | --- | --- |
 | Owner-reviewed note | The exact text, display title, date, and audience the owner previewed. Its citation opens this version of the note. | Start here for progress updates, decisions, and answers derived from personal chats. The owner can revise or expire a stale update. |
