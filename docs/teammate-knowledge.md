@@ -10,6 +10,8 @@ For example, the owner can publish “The launch is waiting on the localization 
 
 For a recurring status sync, publish a dated update with changes since the previous edition, blockers, and decisions awaiting an owner. Give readers a link to the approved revision. Follow-ups can reuse the published evidence, and unanswered questions can become the agenda if the team still needs to meet. [Check-in pilot and outcome measures](plan.md#replacing-routine-status-syncs)
 
+For a task still underway, the owner can grant named recipients access to its live status. Preview the exact public-facing title and the state fields that can change automatically. Free-text progress, source links, and new blockers each require explicit sharing. Recheck the viewer's grant before each live update and when serving lists, counts, or follow-up answers. [Agent activity on Home](plan.md#what-my-agents-are-working-on)
+
 | Option | What the teammate gets | When it fits |
 | --- | --- | --- |
 | Owner-reviewed note | The exact text, display title, date, and audience the owner previewed. Its citation opens this version of the note. | Start here for progress updates, decisions, and answers derived from personal chats. The owner can revise or expire a stale update. |

@@ -6,6 +6,8 @@ Imagine asking, “What did we decide about the launch yesterday? Pick up the dr
 
 The project is in design and feasibility research. The intended release is open source. The first milestone is a native Mac app that can answer a question using evidence from two conversations and take you to both passages.
 
+Home will show what your agents are working on, which task needs your input, and what finished while you were away. You can share a project's live status with selected teammates. [Agent activity on Home](docs/plan.md#what-my-agents-are-working-on)
+
 One team goal is to retire routine status syncs. Before a meeting, a teammate should be able to see what changed, what is blocked, and whose decision would move the work forward. Hereforth will let owners choose when their Mac is available to answer and track the model usage behind those updates.
 
 Read the [implementation plan](docs/plan.md), [integration research](docs/research.md), [teammate sharing design](docs/teammate-knowledge.md), and [Keep Awake and usage controls](docs/availability-and-usage.md).

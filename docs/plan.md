@@ -8,6 +8,24 @@ Home is an ongoing conversation with one assistant. Ask anything there. An invol
 
 The Mac owns the conversations, search index, and task state. With a hosted model, selected messages and evidence travel to the provider for that turn. The UI should identify the provider and let the owner inspect the sources used. Model sign-in, importing past chats, and opening a new chat in another product each need their own user flow.
 
+## What my agents are working on
+
+Put this section on Home and on the paired phone. Give each active task one row with its objective, project, agent, current step, time of the last confirmed activity, and any decision it needs. Put requests for the owner's input first. Selecting a row opens the originating session or the decision awaiting review. Group child agents under the task they are helping with. Keep recent results available below active work so the owner can find what finished while they were away.
+
+| Task | Agent | Last confirmed activity | Next action |
+| --- | --- | --- | --- |
+| Prepare the launch brief | Claude Code | Needs your input · asked 4 min ago | Choose the audience |
+| Check the release candidate | Codex | Working · started integration tests 1 min ago | Open run |
+| Update the onboarding guide | Cursor | Connection lost · last seen 18 min ago | Open session |
+
+Derive the state from the task runner or a connected provider. Store the run ID, parent task, last observed event and time. Use a provider event ID or sequence when available to handle duplicates and late events. On reconnect, reconcile with the source before labeling work live again. Frame a finished model turn as a finished step until the task runner confirms the task outcome. A transcript import or browser handoff can show its last known activity. When coverage is missing, say “Live status unavailable.” A quiet but connected run may simply be waiting for a long operation.
+
+Start with Hereforth-owned tasks in milestone 1. In milestone 2, use Codex app-server lifecycle events for connected threads and evaluate opt-in Claude Code and Cursor hooks for runs started in those tools. Their documented hooks include child-agent lifecycle events. The installed Codex schema exposes thread status changes and turn start/completion events. End-to-end status delivery across the three apps remains a pilot test. [Codex app-server](https://developers.openai.com/codex/app-server) · [Claude Code hooks](https://code.claude.com/docs/en/hooks) · [Cursor hooks](https://cursor.com/docs/hooks)
+
+For the check-in pilot, let the owner share a task under a reviewed project title with named teammates. Offer an explicit **Share live status** option for that task. Teammates can see the approved title, working/waiting/finished state, freshness, and an optional reviewed blocker or result. A viewer can ask “What's waiting on our team?” and see the same authorized rows. Keep permission to respond to an approval or control a task with the owner. [Sharing and revocation](teammate-knowledge.md)
+
+To test the section, start two tasks, put one into a waiting state, disconnect the other adapter, then reconnect and deliver its completion twice. Home should show one outstanding decision and one finished task. A teammate invited to only the first task sees only its approved fields, including in counts and answers. Revoking its grant removes the row and stops further status delivery to that viewer.
+
 ## Replacing routine status syncs
 
 Pilot with one recurring project check-in. Before the next occurrence, ask Hereforth “What changed since our last update, what's blocked, and who needs to decide?” Draft a short update from the prior published version and newer evidence. Include the time covered, links to the evidence the audience can read, the person who could unblock the work, and any decision needed. An unknown owner or stale status should stay visible as such. Have the project owner review and publish the update to named teammates. Each reader can ask follow-up questions against their own grants. [Teammate sharing design](teammate-knowledge.md)
