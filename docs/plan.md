@@ -4,13 +4,34 @@ Draft for discussion, November 20, 2026. See the [research and source links](res
 
 ## How the assistant should feel
 
-Home is an ongoing conversation with one assistant. Ask anything there. An involved request can open a named task in the sidebar with its own transcript, status, and next action. Returning to Home should let you ask “Where did I leave this?” and jump directly to the relevant passage or unfinished task.
+Use Hereforth from an existing assistant. After one-time connection and consent, a teammate asks their own Claude “What is Mohit working on right now?” The answer appears inline, together with any confirmed blockers and the age of the evidence. An owner can ask “Where did I leave this?” in the same way. Each task has a stable identity and transcript across clients. The Mac can also provide an optional Home conversation.
 
-The Mac owns the conversations, search index, and task state. With a hosted model, selected messages and evidence travel to the provider for that turn. The UI should identify the provider and let the owner inspect the sources used. Model sign-in, importing past chats, and opening a new chat in another product each need their own user flow.
+The Mac owns the conversations, search index, and task state. With a hosted model, selected messages and evidence travel to the provider for that turn. The answer should identify the evidence it used, and the owner can ask which provider handled a turn. Model sign-in, importing past chats, and opening a new chat in another product each need their own user flow.
+
+## Asking from Claude
+
+Treat every view as a query that an assistant can discover and invoke. Ship its read operation and conversational acceptance case with the feature. The Mac and phone can render the same result. One-time connection, macOS permissions, and sensitive action approvals can still require human interaction.
+
+**First demo.** A colleague asks their own Claude, “What is Mohit working on right now?” Hereforth resolves Mohit from the caller’s accepted connections and reads his shared work. An illustrative reply is “Mohit’s latest update says he’s preparing the launch brief. His Codex agent started integration tests four minutes ago. The brief is waiting on an audience decision.” Each statement carries its own timestamp and evidence reference. Claude can answer “What decision?” from those references without opening Hereforth. Distinguish the owner's reported focus from work delegated to an agent. When only agent activity is known, attribute it to the agent.
+
+| Information the caller wants | Example question | What Hereforth returns |
+| --- | --- | --- |
+| Current work and decisions | What is Mohit working on? What needs my input? | Approved personal updates, agent states, blockers, decision owners and last observations within the caller's grants. |
+| Memory, sessions and sources | Where did we decide on Thursday? What did the meeting say? | Matching passages, dates, session IDs and citations the caller can resolve inside chat. |
+| Async check-ins | What changed since our last sync? Which questions are still open? | Changes since the selected update, reviewed blockers, open questions, and recorded meeting outcomes. |
+| Usage and budgets | How much did this project use this week? | Permitted totals by provider, billing mode and period, including unknown coverage and freshness. Owner access by default. |
+| Availability and control status | Is my Mac reachable? Why is it awake? Did my task finish? | Last observation, effective awake reasons and expiry, task state and outstanding approvals within the caller’s role. |
+| Access and sharing | Who can see this update? What happened to my access request? | Effective audience for an authorized owner, or the caller’s own request status and decision. |
+
+Give the model typed MCP tools with descriptions, validated filters and structured results. For example, an activity read accepts a connected owner ID and optional project. The service derives the requester from the authenticated connection and applies grants before returning titles, counts or passages. Include observation time, coverage and citation IDs with results. Resolve each follow-up against current grants. A read consumes Hereforth records without invoking a second LLM or granting control of the Mac. Task execution, publication, and access changes use separate action tools and their existing approval rules. [MCP tools](https://modelcontextprotocol.io/specification/2025-11-25/server/tools) · [MCP authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization)
+
+**Connection and discovery.** For the pilot, Mohit sends an invitation binding his Hereforth identity and endpoint to a display name. The teammate connects once in Claude. Offer only accepted connections to that caller. If two people match a name, ask the caller to choose using a shared team or handle. A local Claude Code client can reach an authenticated HTTP MCP endpoint over the LAN or tailnet. For Claude web, desktop or mobile using its hosted connector, provide an opt-in internet-reachable HTTPS gateway. The Mac connects outbound. Authenticate each caller, bind their identity and intended owner to the request, and have the Mac enforce grants for every read. The gateway and caller’s model may process the returned shared fields. Keep the gateway limited to reads in this pilot. [Claude Code MCP connections](https://code.claude.com/docs/en/mcp) · [Hosted Claude connector networking](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
+
+**Release check.** Run the question and a follow-up from a teammate's Claude with all Hereforth windows closed. Repeat as a second teammate with different grants, after revoking a citation, and with the Mac offline. Return a timestamped last-known result only when current authorization can be checked. Otherwise report that current status is unavailable. For a reachable but empty result, say “No current update is shared with you.” Test the local and hosted Claude connections separately.
 
 ## What my agents are working on
 
-Put this section on Home and on the paired phone. Give each active task one row with its objective, project, agent, current step, time of the last confirmed activity, and any decision it needs. Put requests for the owner's input first. Selecting a row opens the originating session or the decision awaiting review. Group child agents under the task they are helping with. Keep recent results available below active work so the owner can find what finished while they were away.
+Expose agent activity as a read query. Its records include the task objective, project, agent, current step, time of the last confirmed activity, and any decision needed. The owner's assistant can present requests needing input first and retrieve the underlying evidence in a follow-up. The optional Home and phone views consume the same records. Group child agents under the task they are helping with. Keep recent results available below active work so the owner can find what finished while they were away.
 
 | Task | Agent | Last confirmed activity | Next action |
 | --- | --- | --- | --- |
@@ -24,7 +45,7 @@ Start with Hereforth-owned tasks in milestone 1. In milestone 2, use Codex app-s
 
 For the check-in pilot, let the owner share a task under a reviewed project title with named teammates. Offer an explicit **Share live status** option for that task. Teammates can see the approved title, working/waiting/finished state, freshness, and an optional reviewed blocker or result. A viewer can ask “What's waiting on our team?” and see the same authorized rows. Keep permission to respond to an approval or control a task with the owner. [Sharing and revocation](teammate-knowledge.md)
 
-To test the section, start two tasks, put one into a waiting state, disconnect the other adapter, then reconnect and deliver its completion twice. Home should show one outstanding decision and one finished task. A teammate invited to only the first task sees only its approved fields, including in counts and answers. Revoking its grant removes the row and stops further status delivery to that viewer.
+To test the section, start two tasks, put one into a waiting state, disconnect the other adapter, then reconnect and deliver its completion twice. An owner asking from Claude should hear about one outstanding decision and one finished task. A teammate invited to only the first task sees only its approved fields, including in counts and answers. Revoking its grant removes the row and stops further status delivery to that viewer.
 
 ## Replacing routine status syncs
 
@@ -36,7 +57,7 @@ After several occurrences, compare organizer-confirmed meetings replaced or shor
 
 ## Proposed first build
 
-Use one SwiftUI app and one SQLite database under Application Support. Home and task conversations share a store. For the first build, the app runs while open and calls the model directly. Add a helper process when a specific feature needs to outlive the window or interact with another application.
+Keep the query service and SQLite store in a per-user macOS process that can run with all windows closed. SwiftUI supplies optional setup, inspection, and approval surfaces. The service answers structured reads directly from authorized local records. The caller’s LLM phrases the answer. Hereforth uses its own provider connection for owner-initiated generation when needed.
 
 1. Store conversations, messages, and source references. Give imports a stable key based on account, source, and external ID. Keep speaker, timestamps, message order, branch ancestry when available, and a locator for the original passage. Update a source and its FTS5 index in one transaction.
 2. Assemble each turn from the current task, selected preferences or decisions, and relevant excerpts from other permitted sources. Target up to roughly 200k tokens of task detail when the selected model allows it. Reserve space for tool results and the reply first. Summarize older turns with links to the originals when the budget is smaller.
@@ -47,9 +68,9 @@ Use one SwiftUI app and one SQLite database under Application Support. Home and 
 
 | Milestone | What to build | Demonstration |
 | --- | --- | --- |
-| 1. Personal memory | SwiftUI Home and task list, user-selected ChatGPT and Claude exports, SQLite search, one eligible ChatGPT sign-in and streamed answer. Start with synthetic fixtures. | Import two chats about the same project, one containing the decision and one the reason. Ask from a fresh task and obtain both citations. Reimport, quit, and reopen. The same citations resolve once each. Cancel a stream and resume the conversation. |
+| 1. Personal memory | Window-independent Mac service, MCP activity and memory reads, per-recipient grants, and user-selected ChatGPT and Claude exports. Start with synthetic fixtures and test one eligible owner model sign-in. | From a teammate’s Claude, ask what Mohit is working on with Hereforth’s window closed. Get only the shared task. As owner, ask for the decision and reason across two imported chats, then follow both citations in chat after a service restart. |
 | 2. Connected work | Add Granola notes and selected Cursor sessions. Open an existing source or start a task in the user's chosen tool. Persist its external ID once known. | Use a meeting decision and a coding session to prepare a brief. Start a new session in a supported tool, then open the same session from Home after restart. Test ChatGPT web and Claude web separately from Codex and Claude Code. |
-| 3. Owner access from another device | Pair a second device. Offer a phone-friendly conversation and task status view. Add a small set of owner-invoked Mac actions, with cancel and visible results. Start with opening a selected document or app. | From a paired phone, resume a task and open its document on an awake Mac. Show when the Mac is asleep, a permission was denied, or an action was interrupted. Reconnect without replaying a completed action. |
+| 3. Owner access from another device | Pair a second device. Expose owner conversation and task status reads to the paired client through the same query service. Add a small set of owner-invoked Mac actions, with cancel and visible results. Start with opening a selected document or app. | From a paired phone, resume a task and open its document on an awake Mac. Show when the Mac is asleep, a permission was denied, or an action was interrupted. Reconnect without replaying a completed action. |
 | 4. Teammate questions and requests | Give each caller an identity and explicit access to particular sources or projects. Apply those grants before retrieval, including summaries, citations, and cached results. Record who requested an action and who approved it. | A colleague receives a cited project update from a shared source. A private chat on the same topic stays private. An IT access request goes to the authorized approver. Revoking a grant takes effect on the next query. |
 
 ## First implementation decisions to test
@@ -60,5 +81,5 @@ For milestone 3, the [remote control design](remote-control.md) specifies owner 
 
 - **Provider round trip.** Test registration for the local prototype with an eligible account, one streamed response, cancellation, expiry, and reconnect. An API key entered by the owner is the fallback when plan access is unavailable. Store Hereforth credentials in Keychain.
 - **Import accuracy.** Build small fixtures for branching, edited messages, repeated imports, missing attachments, and deletion. A citation should still resolve after a title changes. Record whether an old answer used an earlier version of a message.
-- **Teammate access.** Start the two-person retrieval experiment alongside the personal memory milestone. Use owner-reviewed, versioned project notes for the first tailnet browser pilot. Test two callers asking the same question, following citations, and losing access mid-answer. [Sharing design and acceptance criteria](teammate-knowledge.md)
+- **Teammate access.** Start the two-person retrieval experiment alongside the personal memory milestone. Use owner-reviewed, versioned project notes for the first teammate Claude pilot. Test two callers asking the same question, following citations, and losing access mid-answer. [Sharing design and acceptance criteria](teammate-knowledge.md)
 - **Distribution.** Test a signed build on a second Mac and record the minimum macOS version that passes. Choose the open-source license before the public release.

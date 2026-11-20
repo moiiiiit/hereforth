@@ -4,7 +4,7 @@ Product and engineering proposal, November 20, 2026. A typical use case is to le
 
 ## Keep Awake
 
-Put a control in the menu bar and the paired owner's remote view. Show the active reason, expiry, power source, and whether the display may sleep. If several reasons overlap, list them individually. Closing the phone leaves an explicitly authorized task or availability window running on the Mac.
+Let the owner ask “Why is my Mac awake, and until when?” through the assistant connector. Use the same availability record for the optional menu-bar and phone controls. Show the active reason, expiry, power source, and whether the display may sleep. If several reasons overlap, list them individually. Closing the phone leaves an explicitly authorized task or availability window running on the Mac.
 
 | Mode | Owner control | End condition |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ KeepingYouAwake is an open-source precedent for menu-bar timers and battery cuto
 
 ## Model usage
 
-Start metering with the first provider integration. Give each task a compact usage line and the owner a Usage view with today, week, billing period, and custom date ranges. Filter by account, provider, model, project, task, and purpose such as personal chat, drafting a team update, or answering a teammate. Show input, output, cached tokens when reported, request count, and the number of calls with incomplete accounting. Display the active turn's estimated context size alongside the model's context limit in the task view. Repeated input across turns contributes repeatedly to usage.
+Start metering with the first provider integration. Let the owner ask “How much Claude usage went into launch prep this week?” Return the relevant totals, units, coverage and time range in chat. A Usage view and per-task usage line can render the same records for today, week, billing period, or a custom date range. Filter by account, provider, model, project, task, and purpose such as personal chat, drafting a team update, or answering a teammate. Show input, output, cached tokens when reported, request count, and the number of calls with incomplete accounting. Display the active turn's estimated context size alongside the model's context limit in the task view. Repeated input across turns contributes repeatedly to usage.
 
 | Question | Data source and display |
 | --- | --- |
