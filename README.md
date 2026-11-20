@@ -11,3 +11,5 @@ Ask what your agents are working on, which task needs your input, or what finish
 One team goal is to retire routine status syncs. Ask Claude “Give me the team standup” for a short list grouped by person, with recent progress, current work, and requests for help. Follow up with “Who needs a review?” Hereforth will let owners choose when their Mac is available to answer and track the model usage behind those updates. [Team standup design](docs/plan.md#team-standup)
 
 Read the [implementation plan](docs/plan.md), [integration research](docs/research.md), [teammate sharing design](docs/teammate-knowledge.md), and [Keep Awake and usage controls](docs/availability-and-usage.md).
+
+The [product assessment](docs/product-assessment.md) compares Hereforth with existing assistants, traces proposed features to public user requests, and outlines a four-week pilot.
