@@ -10,6 +10,8 @@
     <string>HereforthApp</string>
     <key>CFBundleIdentifier</key>
     <string>com.hereforth.app</string>
+    <key>CFBundleIconFile</key>
+    <string>Hereforth.icns</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

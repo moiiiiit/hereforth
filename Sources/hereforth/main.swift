@@ -5,6 +5,11 @@ let usage = """
 Usage:
   hereforth import FILE...
   hereforth mcp
+  hereforth peer serve [PORT]
+  hereforth peer invite SENDER
+  hereforth peer revoke SENDER
+  hereforth peer add PEER URL  (reads invitation token from stdin)
+  hereforth peer remove PEER
 """
 
 func writeError(_ text: String) {
@@ -16,6 +21,8 @@ do {
     switch arguments.first {
     case "mcp" where arguments.count == 1:
         try MCPServer(store: Store()).run()
+    case "peer":
+        try PeerSettings.command(Array(arguments.dropFirst()))
     case "import" where arguments.count > 1:
         let store = try Store()
         var failed = false

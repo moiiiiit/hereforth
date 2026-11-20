@@ -36,6 +36,18 @@ bundle="$stage/Hereforth.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 install -m 644 scripts/Info.plist "$bundle/Contents/Info.plist"
 install -m 755 "$bin/HereforthApp" "$bin/hereforth" "$bundle/Contents/MacOS/"
+
+iconset="$stage/Hereforth.iconset"
+mkdir "$iconset"
+for size in 16 32 64 128 256 512 1024; do
+    /usr/bin/sips -z "$size" "$size" Assets/Hereforth.png --out "$stage/icon-$size.png" >/dev/null
+done
+for size in 16 32 128 256 512; do
+    cp "$stage/icon-$size.png" "$iconset/icon_${size}x${size}.png"
+    cp "$stage/icon-$((size * 2)).png" "$iconset/icon_${size}x${size}@2x.png"
+done
+/usr/bin/iconutil -c icns "$iconset" -o "$bundle/Contents/Resources/Hereforth.icns"
+
 touch "$bundle/$marker"
 
 if command -v codesign >/dev/null 2>&1; then

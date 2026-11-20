@@ -102,6 +102,9 @@ def main(binary):
             tools = request("tools/list")["result"]["tools"]
             assert {tool["name"] for tool in tools} == {
                 "list_conversations", "search_decisions", "read_passage", "prepare_handoff", "get_handoffs",
+                "publish_current_session", "unpublish_current_session", "list_peer_sessions",
+                "offer_session_context", "read_session_context", "get_context_status", "list_context_requests",
+                "submit_work_request", "get_work_request", "read_granted_brief", "list_work_requests",
             }
             conversations = call("list_conversations")["structuredContent"]["conversations"]
             assert all(set(chat) == {"id", "title", "provider", "passage_count"} for chat in conversations)
@@ -136,7 +139,7 @@ def main(binary):
             preview = handoff["structuredContent"]
             assert preview == json.loads(handoff["content"][0]["text"])
             assert preview["draft_id"] and preview["recipient"] == "Casey"
-            assert "Draft briefs" in preview["instructions"] and "share it manually" in preview["instructions"]
+            assert "Handoffs" in preview["instructions"] and "paired session" in preview["instructions"]
             assert "Glacier planning" in preview["markdown"] and "Glacier billing" in preview["markdown"]
 
         for version in ("2024-11-05", "2025-03-26", "2025-06-18", "unknown"):

@@ -13,11 +13,19 @@ final class Database {
         }
         defer { free(parent) }
         let path = String(cString: parent) + "/" + url.lastPathComponent
-        let fd = open(path, O_RDWR | O_CREAT | O_NOFOLLOW, S_IRUSR | S_IWUSR)
-        guard fd >= 0 else { throw HereforthError("Could not open the local database file.") }
-        defer { close(fd) }
-        guard fchmod(fd, S_IRUSR | S_IWUSR) == 0 else {
-            throw HereforthError("Could not set private permissions on the local database file.")
+        // Closing a second descriptor on this inode can release an existing SQLite handle's POSIX locks.
+        let fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, S_IRUSR | S_IWUSR)
+        if fd >= 0 {
+            let result = fchmod(fd, S_IRUSR | S_IWUSR)
+            close(fd)
+            guard result == 0 else { throw HereforthError("Could not set private permissions on the local database file.") }
+        } else if errno != EEXIST {
+            throw HereforthError("Could not create the local database file.")
+        }
+        var file = stat()
+        guard lstat(path, &file) == 0, file.st_mode & S_IFMT == S_IFREG,
+              file.st_uid == geteuid(), file.st_mode & 0o777 == 0o600 else {
+            throw HereforthError("The local database must be an owner-only regular file.")
         }
 
         var connection: OpaquePointer?

@@ -11,13 +11,40 @@ struct HereforthApp: App {
                 .frame(minWidth: 810, minHeight: 500)
         }
         .defaultSize(width: 1040, height: 660)
+        .commands { LibraryCommands() }
+    }
+}
+
+private struct LibraryFind: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+private extension FocusedValues {
+    var libraryFind: (() -> Void)? {
+        get { self[LibraryFind.self] }
+        set { self[LibraryFind.self] = newValue }
+    }
+}
+
+private struct LibraryCommands: Commands {
+    @FocusedValue(\.libraryFind) private var find
+
+    var body: some Commands {
+        CommandGroup(after: .textEditing) {
+            Button("Find Conversations") { find?() }
+                .keyboardShortcut("f", modifiers: .command)
+                .disabled(find == nil)
+        }
     }
 }
 
 private struct LibraryView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
     @State private var chats: [ChatInfo] = []
     @State private var briefs: [Brief] = []
+    @State private var offers: [ContextOffer] = []
+    @State private var requests: [WorkRequest] = []
     @State private var store: Store?
     @State private var selection: String? = "conversations"
     @State private var selectedChat: ChatInfo.ID?
@@ -26,9 +53,42 @@ private struct LibraryView: View {
     @State private var status = ""
     @State private var problem: String?
     @State private var importing = false
+    @State private var filter = ""
+    @FocusState private var filterFocused: Bool
+    @State private var findRequested = false
+
+    private var accent: Color {
+        colorScheme == .dark ? Color(red: 0.59, green: 0.83, blue: 0.74)
+            : Color(red: 0.137, green: 0.329, blue: 0.275)
+    }
+
+    private var paper: Color {
+        colorScheme == .dark ? Color(nsColor: .windowBackgroundColor)
+            : Color(red: 0.981, green: 0.973, blue: 0.951)
+    }
 
     private var selectedBrief: Brief? {
         briefs.first { "brief:" + $0.id == selection }
+    }
+
+    private var visibleChats: [ChatInfo] {
+        let query = filter.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return chats }
+        return chats.filter {
+            $0.title.localizedStandardContains(query) || $0.provider.localizedStandardContains(query)
+        }
+    }
+
+    private var showsFirstRun: Bool {
+        chats.isEmpty && selection == "conversations"
+    }
+
+    private var pendingRequests: Int {
+        offers.lazy.filter { $0.state == "pending" }.count
+    }
+
+    private var pendingWork: Int {
+        requests.lazy.filter { $0.state == "pending" }.count
     }
 
     var body: some View {
@@ -38,7 +98,15 @@ private struct LibraryView: View {
                     Label("Conversations", systemImage: "bubble.left.and.bubble.right")
                         .tag("conversations")
                 }
-                Section("Draft briefs") {
+                Section("Handoffs") {
+                    queueRow("Inbox", icon: "tray", count: pendingRequests)
+                        .tag("inbox")
+                    queueRow("Work Requests", icon: "checklist", count: pendingWork)
+                        .tag("requests")
+                    if briefs.isEmpty {
+                        Label("Local Drafts", systemImage: "doc.text")
+                            .tag("handoffs")
+                    }
                     ForEach(briefs) { brief in
                         Label {
                             VStack(alignment: .leading, spacing: 3) {
@@ -53,17 +121,35 @@ private struct LibraryView: View {
                         }
                         .tag("brief:" + brief.id)
                     }
-                    if briefs.isEmpty {
-                        Text("No drafts yet")
-                            .foregroundStyle(.secondary)
-                    }
                 }
             }
-            .navigationSplitViewColumnWidth(min: 220, ideal: 245)
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 205, ideal: 228)
         } detail: {
             VStack(spacing: 0) {
-                if let brief = selectedBrief {
-                    draftView(brief)
+                if selection == "inbox" {
+                    ContextInbox(offers: offers, onReview: reviewContext)
+                } else if selection == "requests" {
+                    WorkRequests(
+                        requests: requests,
+                        briefs: briefs,
+                        previewDraft: previewWorkRequest,
+                        review: reviewWorkRequest,
+                        revoke: revokeWorkRequest
+                    )
+                } else if let brief = selectedBrief {
+                    BriefReview(
+                        title: brief.title,
+                        recipient: brief.recipient,
+                        markdown: Binding(
+                            get: { edits[brief.id] ?? brief.markdown },
+                            set: { saveDraft(brief, text: $0) }
+                        ),
+                        onExport: { export(brief) }
+                    )
+                    .id(brief.id)
+                } else if selection == "handoffs" {
+                    emptyHandoffs
                 } else {
                     library
                 }
@@ -73,8 +159,9 @@ private struct LibraryView: View {
                         ProgressView().controlSize(.small)
                         Text("Importing conversations…")
                     } else {
-                        Image(systemName: "internaldrive")
-                        Text(status.isEmpty ? "Stored on this Mac" : status)
+                        Image(systemName: status.isEmpty ? "internaldrive" : "checkmark.circle")
+                            .accessibilityHidden(true)
+                        Text(status.isEmpty ? "On this Mac" : status)
                     }
                     Spacer()
                 }
@@ -84,18 +171,24 @@ private struct LibraryView: View {
                 .frame(height: 34)
                 .background(.bar)
             }
+            .background(paper)
             .toolbar {
                 Button(action: refresh) {
                     Label("Refresh Library", systemImage: "arrow.clockwise")
                 }
                 .help("Reload imported conversations and drafts")
-                Button(action: importFiles) {
-                    Label("Import Files…", systemImage: "square.and.arrow.down")
+                if !showsFirstRun {
+                    Button(action: importFiles) {
+                        Label("Import Files…", systemImage: "square.and.arrow.down")
+                    }
+                    .keyboardShortcut("i", modifiers: .command)
+                    .disabled(importing)
+                    .help("Import conversation files (⌘I)")
                 }
-                .disabled(importing)
-                .help("Import conversation files")
             }
         }
+        .tint(accent)
+        .focusedSceneValue(\.libraryFind, chats.isEmpty ? nil : findConversations)
         .onAppear(perform: refresh)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refresh() }
@@ -110,7 +203,13 @@ private struct LibraryView: View {
                 }
                 if !importing, let updatedBriefs = try? store?.briefs() {
                     briefs = updatedBriefs
-                    if selectedBrief == nil { selection = "conversations" }
+                    validateSelection()
+                }
+                if let incoming = try? store?.contextInbox() {
+                    offers = incoming
+                }
+                if let incoming = try? store?.workRequests() {
+                    requests = incoming
                 }
             }
         }
@@ -132,87 +231,190 @@ private struct LibraryView: View {
         }
     }
 
-    private var library: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Conversations").font(.largeTitle.bold())
-                Text(chats.isEmpty
-                     ? "Build a local library from conversation exports."
-                     : "\(chats.count) imported \(chats.count == 1 ? "conversation" : "conversations")")
+    private func queueRow(_ title: String, icon: String, count: Int) -> some View {
+        HStack {
+            Label(title, systemImage: icon)
+            Spacer(minLength: 8)
+            if count > 0 {
+                Text(count, format: .number)
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel("\(count) waiting for review")
             }
-            .padding(24)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var library: some View {
+        Group {
             if chats.isEmpty {
                 ContentUnavailableView {
-                    Label("No conversations yet", systemImage: "bubble.left.and.bubble.right")
+                    VStack(spacing: 14) {
+                        Image(nsImage: NSApp.applicationIconImage)
+                            .resizable()
+                            .frame(width: 56, height: 56)
+                            .accessibilityHidden(true)
+                        Text("Import your conversations")
+                            .font(.title2.weight(.semibold))
+                    }
                 } description: {
-                    Text("Import extracted ChatGPT or Claude JSON, a text file, or a Markdown file.")
+                    Text("Add an extracted ChatGPT or Claude JSON export, a text file, or a Markdown file.")
                 } actions: {
-                    Button("Import Files…", action: importFiles)
-                        .buttonStyle(.borderedProminent)
-                        .disabled(importing)
+                    Button(action: importFiles) {
+                        Text("Import Files…")
+                            .foregroundStyle(colorScheme == .dark ? Color.black : .white)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut("i", modifiers: .command)
+                    .disabled(importing)
+                    .help("Import conversation files (⌘I)")
                 }
             } else {
-                Table(chats, selection: $selectedChat) {
-                    TableColumn("Title", value: \.title)
-                    TableColumn("Source") { chat in
-                        Text(chat.provider)
-                            .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .center, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Conversations")
+                                .font(.title.weight(.semibold))
+                                .accessibilityAddTraits(.isHeader)
+                            Text(conversationCount)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        filterField
                     }
-                    .width(110)
-                    TableColumn("Messages") { chat in
-                        Text(chat.count, format: .number)
-                            .monospacedDigit()
+                    .padding(24)
+                    Divider()
+                    if visibleChats.isEmpty {
+                        ContentUnavailableView {
+                            Label("No matching conversations", systemImage: "magnifyingglass")
+                        } description: {
+                            Text("Try a different title or source.")
+                        }
+                    } else {
+                        Table(visibleChats, selection: $selectedChat) {
+                            TableColumn("Title", value: \.title)
+                            TableColumn("Source") { chat in
+                                Text(chat.provider)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .width(105)
+                            TableColumn("Messages") { chat in
+                                Text(chat.count, format: .number)
+                                    .monospacedDigit()
+                            }
+                            .width(80)
+                        }
+                        .contextMenu(forSelectionType: ChatInfo.ID.self) { items in
+                            if let id = items.first,
+                               let chat = visibleChats.first(where: { $0.id == id }) {
+                                Button("Remove Conversation…", role: .destructive) {
+                                    chatToRemove = chat
+                                }
+                                .disabled(importing)
+                            }
+                        }
+                        Divider()
+                        HStack {
+                            Spacer()
+                            Button("Remove Conversation…") {
+                                chatToRemove = visibleChats.first { $0.id == selectedChat }
+                            }
+                            .disabled(selectedChat == nil || importing)
+                            .help("Remove the selected conversation from local search")
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 8)
                     }
-                    .width(80)
                 }
-                HStack(spacing: 6) {
-                    Image(systemName: "info.circle")
-                    Text("Ask Claude with Hereforth connected to create a draft brief. It will appear in the sidebar.")
-                    Spacer()
-                    Button("Remove…", role: .destructive) {
-                        chatToRemove = chats.first { $0.id == selectedChat }
-                    }
-                    .disabled(selectedChat == nil || importing)
-                    .help("Remove the selected conversation from the library")
-                }
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 14)
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var conversationCount: String {
+        let total = chats.count
+        let shown = visibleChats.count
+        if total == shown { return "\(total) \(total == 1 ? "conversation" : "conversations")" }
+        return "\(shown) of \(total) conversations"
+    }
+
+    private var filterField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            TextField("Filter by title or source", text: $filter)
+                .textFieldStyle(.plain)
+                .focused($filterFocused)
+                .help("Filter conversations by title or source (⌘F)")
+                .onExitCommand {
+                    if filter.isEmpty {
+                        filterFocused = false
+                    } else {
+                        filter = ""
+                    }
+                }
+                .onChange(of: filter) { _, _ in
+                    if !visibleChats.contains(where: { $0.id == selectedChat }) {
+                        selectedChat = nil
+                    }
+                }
+                .task(id: findRequested) {
+                    guard findRequested else { return }
+                    await Task.yield()
+                    guard !Task.isCancelled else { return }
+                    filterFocused = true
+                    findRequested = false
+                }
+            Button {
+                filter = ""
+                filterFocused = true
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Clear Conversation Filter")
+            .help("Clear the conversation filter")
+            .opacity(filter.isEmpty ? 0 : 1)
+            .disabled(filter.isEmpty)
+            .accessibilityHidden(filter.isEmpty)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .frame(width: 220)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .strokeBorder(filterFocused ? accent : Color(nsColor: .separatorColor))
+                .allowsHitTesting(false)
         }
     }
 
-    private func draftView(_ brief: Brief) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(brief.title).font(.largeTitle.bold())
-                    Text("Prepared for \(brief.recipient)")
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("Save Markdown…") { export(brief) }
-                    .buttonStyle(.borderedProminent)
-            }
-            Text("Edits are saved to this local draft. Review the content before saving a copy to share.")
-                .foregroundStyle(.secondary)
-            TextEditor(text: Binding(
-                get: { edits[brief.id] ?? brief.markdown },
-                set: { saveDraft(brief, text: $0) }
-            ))
-            .accessibilityLabel("Draft Markdown")
-            .font(.system(.body, design: .monospaced))
-            .padding(8)
-            .background(.background)
-            .overlay {
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(.quaternary)
-                    .allowsHitTesting(false)
-            }
+    private var emptyHandoffs: some View {
+        ContentUnavailableView {
+            Label("No local drafts yet", systemImage: "doc.text")
+        } description: {
+            Text("Ask your connected assistant to prepare a draft if you want to edit or export it locally.")
         }
-        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func findConversations() {
+        if selection == "conversations" {
+            filterFocused = true
+        } else {
+            findRequested = true
+            selection = "conversations"
+        }
+    }
+
+    private func validateSelection() {
+        if selection == "handoffs", let latest = briefs.first {
+            selection = "brief:" + latest.id
+        } else if selection != "handoffs" && selection != "inbox" && selection != "requests" && selectedBrief == nil {
+            selection = "conversations"
+        }
     }
 
     private func refresh() {
@@ -220,14 +422,47 @@ private struct LibraryView: View {
             let store = try self.store ?? Store()
             let updatedChats = try store.chats()
             let updatedBriefs = try store.briefs()
+            let incoming = try store.contextInbox()
+            let incomingWork = try store.workRequests()
             self.store = store
             chats = updatedChats
             briefs = updatedBriefs
-            if !chats.contains(where: { $0.id == selectedChat }) { selectedChat = nil }
-            if selectedBrief == nil { selection = "conversations" }
+            offers = incoming
+            requests = incomingWork
+            if !visibleChats.contains(where: { $0.id == selectedChat }) { selectedChat = nil }
+            validateSelection()
         } catch {
             problem = "The local library couldn’t be loaded. \(error.localizedDescription)"
         }
+    }
+
+    private func reviewContext(_ id: String, approve: Bool) {
+        do {
+            let store = try self.store ?? Store()
+            try store.reviewContext(id: id, approve: approve)
+            offers = try store.contextInbox()
+        } catch {
+            if let incoming = try? store?.contextInbox() { offers = incoming }
+            problem = "The context request couldn’t be updated. \(error.localizedDescription)"
+        }
+    }
+
+    private func previewWorkRequest(_ id: String, _ briefID: String) throws -> WorkRequestPreview {
+        let store = try self.store ?? Store()
+        return try store.previewWorkRequest(id: id, briefID: briefID)
+    }
+
+    private func reviewWorkRequest(_ id: String, _ approve: Bool, _ preview: WorkRequestPreview?) throws {
+        let store = try self.store ?? Store()
+        defer { if let updated = try? store.workRequests() { requests = updated } }
+        _ = try store.reviewWorkRequest(id: id, approve: approve,
+                                        briefID: preview?.briefID, digest: preview?.digest)
+    }
+
+    private func revokeWorkRequest(_ id: String) throws {
+        let store = try self.store ?? Store()
+        defer { if let updated = try? store.workRequests() { requests = updated } }
+        try store.revokeWorkRequest(id: id)
     }
 
     private func remove(_ chat: ChatInfo) {

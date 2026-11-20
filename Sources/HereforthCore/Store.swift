@@ -25,7 +25,7 @@ public struct Brief: Identifiable {
 }
 
 public final class Store {
-    private let db: Database
+    let db: Database
     private static let pageSize = 8_000
 
     public init(directory: URL? = nil) throws {
@@ -38,6 +38,8 @@ public final class Store {
                                                 attributes: [.posixPermissions: 0o700])
         db = try Database(url: directory.appendingPathComponent("hereforth.sqlite"))
         try db.transaction {
+            try installSessionContextTables()
+            try installWorkRequestsTable()
             try db.execute("""
                 CREATE TABLE IF NOT EXISTS chats (
                     id TEXT PRIMARY KEY, provider TEXT NOT NULL, title TEXT NOT NULL, count INTEGER NOT NULL
