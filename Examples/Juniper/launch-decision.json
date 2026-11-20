@@ -1,0 +1,23 @@
+[
+  {
+    "id": "juniper-final-decision",
+    "title": "Juniper launch follow-up",
+    "current_node": "decision",
+    "mapping": {
+      "decision": {
+        "parent": null,
+        "message": {
+          "id": "juniper-friday",
+          "author": { "role": "user" },
+          "create_time": 1793728800,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Confirmed for Juniper: move the launch to Friday November 13. Thursday was only the proposal. Design needs Thursday for the accessibility review. Next step: get Design's sign-off and update the launch checklist."
+            ]
+          }
+        }
+      }
+    }
+  }
+]

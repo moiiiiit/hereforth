@@ -1,0 +1,14 @@
+[
+  {
+    "uuid": "juniper-first-discussion",
+    "name": "Juniper launch planning",
+    "chat_messages": [
+      {
+        "uuid": "juniper-thursday",
+        "sender": "human",
+        "created_at": "2026-11-02T18:00:00Z",
+        "text": "For the Juniper launch, Thursday November 12 is our proposed date. We still need the accessibility review before we can commit."
+      }
+    ]
+  }
+]

@@ -1,6 +1,19 @@
 # Product and implementation plan
 
-Draft for discussion, November 20, 2026. See the [research and source links](research.md) for the basis of the proposed choices.
+November 20, 2026. Hereforth is free to install and self-host. The Mac app and assistant connector ship together under the [MIT license](../LICENSE). An owner can use their existing Claude client for inference. The local recall and handoff path needs no Hereforth account, team subscription, or API key. The user's assistant plan and organization settings still apply.
+
+## Decisions and handoffs first
+
+The first release should work for one person immediately and for a teammate who has never installed Hereforth. Comity provides a useful model for what travels with a handoff: the objective, decisions, attempts, and remaining work. Start with a person reviewing that information and sending a portable brief. The later connected workflow can add acceptance and replies. [Comity handoffs](https://comity.so/docs/collaboration/handoffs) · [Public feature requests and competing products](product-assessment.md)
+
+| Priority | Workflow | Acceptance check |
+| --- | --- | --- |
+| 1. Recall a decision | Import two chats. Ask Claude what the team decided, why, and whether it changed. Return dated passages that Claude can cite and open. | One chat proposes Thursday and a later chat confirms Friday. The answer distinguishes the proposal from the decision, cites both, and says when the available evidence is ambiguous. Follow a citation after restarting the connector. |
+| 2. Hand off to another person | Ask Claude to prepare the objective, current decision, relevant attempts, and next step for a named teammate. Review the exact brief and send it through an existing channel. | The recipient can explain the decision and start the next step in their own assistant using the brief alone. The brief includes only the text and evidence the owner chose to send. Next, let a connected recipient acknowledge the handoff and send back the outcome. |
+| 3. Route a blocker | Ask “Who needs an answer from me?” A named recipient can acknowledge the question, answer it, or ask for a discussion. | Return the response to the person waiting and reflect the change in the next standup. Track how long the question waited and whether the organizer could shorten the sync. |
+| 4. Follow an answer | From a dated launch answer, ask “Tell me if this changes.” Subscribe to a specific shared decision and choose when to stop following it. | A newly approved change triggers one update with a readable citation. Replaying it produces no duplicate. A revoked or expired grant stops delivery. |
+
+Follow the first release with PR-backed evidence and explicit decision corrections. An agent finishing a turn, a PR merging, and a person confirming a decision each represent different facts. Test them against a real handoff before expanding the source list. The open-source pilot succeeds when people return unprompted, need fewer clarification messages, and save time on an actual sync. A teammate can participate by attaching a reviewed brief in their usual assistant.
 
 ## How the assistant should feel
 
@@ -12,7 +25,7 @@ The Mac owns the conversations, search index, and task state. With a hosted mode
 
 Treat every view as a query that an assistant can discover and invoke. Ship its read operation and conversational acceptance case with the feature. The Mac and phone can render the same result. One-time connection, macOS permissions, and sensitive action approvals can still require human interaction.
 
-**First demo.** A colleague asks their own Claude, “What is Mohit working on right now?” Hereforth resolves Mohit from the caller’s accepted connections and reads his shared work. An illustrative reply is “Mohit’s latest update says he’s preparing the launch brief. His Codex agent started integration tests four minutes ago. The brief is waiting on an audience decision.” Each statement carries its own timestamp and evidence reference. Claude can answer “What decision?” from those references without opening Hereforth. Distinguish the owner's reported focus from work delegated to an agent. When only agent activity is known, attribute it to the agent.
+**Connected-team demo, after portable handoffs.** A colleague asks their own Claude, “What is Mohit working on right now?” Hereforth resolves Mohit from the caller’s accepted connections and reads his shared work. An illustrative reply is “Mohit’s latest update says he’s preparing the launch brief. His Codex agent started integration tests four minutes ago. The brief is waiting on an audience decision.” Each statement carries its own timestamp and evidence reference. Claude can answer “What decision?” from those references without opening Hereforth. Distinguish the owner's reported focus from work delegated to an agent. When only agent activity is known, attribute it to the agent.
 
 | Information the caller wants | Example question | What Hereforth returns |
 | --- | --- | --- |
@@ -85,7 +98,8 @@ Keep the query service and SQLite store in a per-user macOS process that can run
 
 | Milestone | What to build | Demonstration |
 | --- | --- | --- |
-| 1. Personal memory | Window-independent Mac service, MCP activity and memory reads, per-recipient grants, and user-selected ChatGPT and Claude exports. Start with synthetic fixtures and test one eligible owner model sign-in. | From a teammate’s Claude, ask what Mohit is working on with Hereforth’s window closed. Get only the shared task. As owner, ask for the decision and reason across two imported chats, then follow both citations in chat after a service restart. |
+| 1a. Personal memory and portable handoffs | Window-independent local MCP, native import and review, searchable user-selected ChatGPT and Claude exports, and a recipient-ready Markdown brief. Use the caller's assistant for inference. | As owner, recover the final decision from two chats, open both citations after restart, then hand the work to a teammate who uses a different assistant. |
+| 1b. Team pilot | Verify per-recipient grants, connect the first live activity source, and add the team standup read. Test a named blocker and a single decision watch with the same recipients. | From a teammate’s Claude, read only shared tasks, answer a blocker, and follow a changed decision. A revoked recipient receives no future update. |
 | 2. Connected work | Add Granola notes and selected Cursor sessions. Open an existing source or start a task in the user's chosen tool. Persist its external ID once known. | Use a meeting decision and a coding session to prepare a brief. Start a new session in a supported tool, then open the same session from Home after restart. Test ChatGPT web and Claude web separately from Codex and Claude Code. |
 | 3. Owner access from another device | Pair a second device. Expose owner conversation and task status reads to the paired client through the same query service. Add a small set of owner-invoked Mac actions, with cancel and visible results. Start with opening a selected document or app. | From a paired phone, resume a task and open its document on an awake Mac. Show when the Mac is asleep, a permission was denied, or an action was interrupted. Reconnect without replaying a completed action. |
 | 4. Teammate questions and requests | Give each caller an identity and explicit access to particular sources or projects. Apply those grants before retrieval, including summaries, citations, and cached results. Record who requested an action and who approved it. | A colleague receives a cited project update from a shared source. A private chat on the same topic stays private. An IT access request goes to the authorized approver. Revoking a grant takes effect on the next query. |
@@ -99,4 +113,4 @@ For milestone 3, the [remote control design](remote-control.md) specifies owner 
 - **Provider round trip.** Test registration for the local prototype with an eligible account, one streamed response, cancellation, expiry, and reconnect. An API key entered by the owner is the fallback when plan access is unavailable. Store Hereforth credentials in Keychain.
 - **Import accuracy.** Build small fixtures for branching, edited messages, repeated imports, missing attachments, and deletion. A citation should still resolve after a title changes. Record whether an old answer used an earlier version of a message.
 - **Teammate access.** Start the two-person retrieval experiment alongside the personal memory milestone. Use owner-reviewed, versioned project notes for the first teammate Claude pilot. Test two callers asking the same question, following citations, and losing access mid-answer. [Sharing design and acceptance criteria](teammate-knowledge.md)
-- **Distribution.** Test a signed build on a second Mac and record the minimum macOS version that passes. Choose the open-source license before the public release.
+- **Distribution.** Provide a local source install under the MIT license. Test a signed, notarized download on a second Mac before offering a public binary release.
