@@ -17,6 +17,7 @@ Treat every view as a query that an assistant can discover and invoke. Ship its 
 | Information the caller wants | Example question | What Hereforth returns |
 | --- | --- | --- |
 | Current work and decisions | What is Mohit working on? What needs my input? | Approved personal updates, agent states, blockers, decision owners and last observations within the caller's grants. |
+| Team standup | Give me the team standup. Who needs a review today? | A list grouped by teammate covering recent progress, current work, and requests for help. |
 | Memory, sessions and sources | Where did we decide on Thursday? What did the meeting say? | Matching passages, dates, session IDs and citations the caller can resolve inside chat. |
 | Async check-ins | What changed since our last sync? Which questions are still open? | Changes since the selected update, reviewed blockers, open questions, and recorded meeting outcomes. |
 | Usage and budgets | How much did this project use this week? | Permitted totals by provider, billing mode and period, including unknown coverage and freshness. Owner access by default. |
@@ -46,6 +47,22 @@ Start with Hereforth-owned tasks in milestone 1. In milestone 2, use Codex app-s
 For the check-in pilot, let the owner share a task under a reviewed project title with named teammates. Offer an explicit **Share live status** option for that task. Teammates can see the approved title, working/waiting/finished state, freshness, and an optional reviewed blocker or result. A viewer can ask “What's waiting on our team?” and see the same authorized rows. Keep permission to respond to an approval or control a task with the owner. [Sharing and revocation](teammate-knowledge.md)
 
 To test the section, start two tasks, put one into a waiting state, disconnect the other adapter, then reconnect and deliver its completion twice. An owner asking from Claude should hear about one outstanding decision and one finished task. A teammate invited to only the first task sees only its approved fields, including in counts and answers. Revoking its grant removes the row and stops further status delivery to that viewer.
+
+## Team standup
+
+“Give me the team standup” returns one short entry per teammate, directly in the caller's Claude. Use their current team, or ask which team if the choice is ambiguous. Include what changed since the previous team standup, what is underway now, and any blocker or request for help. On the first standup use the last working day and show the date range. Keep ongoing blockers visible even if they predate that range. A reader can follow up with “Only blockers” or “What does Priya need from me?”
+
+Example with fictional updates:
+
+- **Mohit** finished the connector draft. His Codex agent is running integration tests. Needs Priya to confirm the OAuth scopes. Updated 9:20 am.
+- **Priya** reviewed the mobile build and is fixing the sign-in issue. Updated 9:05 am.
+- **Alex** has no shared update for this period.
+
+Expose one read-only MCP tool, `team_standup`, that takes a team and optional start time. Resolve membership from the team roster visible to the caller. Request each member’s shared updates with the caller’s identity, then group the results by person. Keep the source and observation time for each item so Claude can answer follow-ups. Reading the list leaves the team's reporting period unchanged. Use the last published standup as the shared baseline.
+
+Return the available entries when a member's Mac is offline, with a coverage note for that member. Distinguish “couldn't check” from “no shared update.” Reuse previously published entries only while the caller's grant can be verified. Teammates can read at different times without generating another model summary on every owner's Mac.
+
+Pilot with three teammates. Ask for the standup from Claude, then ask who needs a review. Repeat as a caller with fewer grants and with one Mac offline. Both questions should return the permitted evidence, preserve attribution, and work with every Hereforth window closed.
 
 ## Replacing routine status syncs
 

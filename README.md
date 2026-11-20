@@ -8,6 +8,6 @@ The project is in design and feasibility research. The intended release is open 
 
 Ask what your agents are working on, which task needs your input, or what finished while you were away. Every planned view has a conversational query, including usage and Mac availability. You can share a project's live status with selected teammates. [Agent activity on Home](docs/plan.md#what-my-agents-are-working-on)
 
-One team goal is to retire routine status syncs. Before a meeting, a teammate should be able to see what changed, what is blocked, and whose decision would move the work forward. Hereforth will let owners choose when their Mac is available to answer and track the model usage behind those updates.
+One team goal is to retire routine status syncs. Ask Claude “Give me the team standup” for a short list grouped by person, with recent progress, current work, and requests for help. Follow up with “Who needs a review?” Hereforth will let owners choose when their Mac is available to answer and track the model usage behind those updates. [Team standup design](docs/plan.md#team-standup)
 
 Read the [implementation plan](docs/plan.md), [integration research](docs/research.md), [teammate sharing design](docs/teammate-knowledge.md), and [Keep Awake and usage controls](docs/availability-and-usage.md).
