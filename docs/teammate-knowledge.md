@@ -1,8 +1,22 @@
 # Sharing personal knowledge with teammates
 
-Design recommendation, November 20, 2026.
+## Ask for someone’s standup
 
-Give each teammate a Hereforth connection in their own assistant. Once connected, they can ask about a person by name. The owner’s Mac searches the material that person has shared with the caller and returns dated evidence. Claude can answer and handle follow-ups in the same chat. A private browser page is an optional client of the same queries.
+Both teammates connect Hereforth to the assistant they already use and [pair their installations](session-context.md). A standup belongs to a person and can outlive any Claude or Codex chat. A teammate can ask for one even when the owner has no published assistant sessions.
+
+| In the conversation | What Hereforth does |
+| --- | --- |
+| Mohit asks, “What is Ryan working on this week?” | Mohit's assistant looks for a standup thread he can already read at Ryan's Hereforth. If it finds one, it reads Ryan's latest update and gives the date. If it finds none, it offers to ask Ryan. An absent update says nothing about how busy Ryan is. |
+| “Ask Ryan for his standup so I can plan the docs review.” | A request with that reason appears in Ryan's Work Requests. Ryan can decide at his desk. He can consult **This Week** privately to recall what changed. |
+| Ryan reviews “The pilot will ship two export templates. The docs review is the remaining blocker.” | Approval opens a new Hereforth thread for Ryan and Mohit with exactly those words as its first message. Ryan sees the recipient and seven-day duration before approving. His provider conversations, their titles and their private citation IDs stay in his library. |
+| “Which template needs review first?” | If the approved messages answer the question, Mohit's assistant can cite the dated update. Otherwise it can offer to post the question to the thread. Ryan can reply there from his own assistant or from Hereforth. A question stays open until someone answers it. |
+| Mohit opens Codex the next day and asks, “What did Ryan say about the docs review?” | Codex can find the same authorized thread at Ryan's Hereforth and read the exchange. Mohit doesn't need the original Claude chat or a saved thread ID. Expiry or revocation ends future peer reads and replies. Previously delivered text may still be in either assistant's history. |
+
+Each approved request creates its own conversation with that requester. Ryan can give another teammate a different update without disclosing Mohit's questions. A combined team standup is a planned read across each caller's grants. It should show whose latest update is stale or whose Mac could not be reached. Publishing a session to receive [a context suggestion](session-context.md) remains a separate, deliberate action.
+
+## Broader sharing design
+
+The following options extend the standup pilot to other shareable sources. Give each teammate a Hereforth connection in their own assistant. Once connected, they can ask about a person by name. The owner’s Mac searches the material that person has shared with the caller and returns dated evidence. Claude can answer and handle follow-ups in the same chat. A private browser page is an optional client of the same queries.
 
 For example, the owner can publish “The launch is waiting on the localization review, as of Thursday” from a meeting that also covered personnel changes. A teammate asking about launch progress sees that update and can open the approved note. The owner can follow a private reference back to the original meeting. This gives the teammate something useful even when sharing the full transcript would be inappropriate.
 

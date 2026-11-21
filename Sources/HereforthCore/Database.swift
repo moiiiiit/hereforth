@@ -40,10 +40,10 @@ final class Database {
 
     deinit { sqlite3_close(handle) }
 
-    func transaction<T>(_ body: () throws -> T) throws -> T {
+    func transaction<T>(write: Bool = true, _ body: () throws -> T) throws -> T {
         lock.lock()
         defer { lock.unlock() }
-        try execute("BEGIN IMMEDIATE")
+        try execute(write ? "BEGIN IMMEDIATE" : "BEGIN")
         do {
             let result = try body()
             try execute("COMMIT")
@@ -87,6 +87,11 @@ final class Database {
         guard let value = sqlite3_column_text(statement, index) else { return "" }
         let count = Int(sqlite3_column_bytes(statement, index))
         return String(decoding: UnsafeBufferPointer(start: value, count: count), as: UTF8.self)
+    }
+
+    static func blob(_ statement: OpaquePointer, _ index: Int32) -> Data {
+        guard let value = sqlite3_column_blob(statement, index) else { return Data() }
+        return Data(bytes: value, count: Int(sqlite3_column_bytes(statement, index)))
     }
 
     private func error() -> HereforthError {

@@ -1,5 +1,6 @@
 """Run with python3 Tests/smoke-mcp.py .build/debug/hereforth."""
 import contextlib
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -93,19 +94,44 @@ def main(binary):
         imported = subprocess.run([binary, "import", chatgpt, claude], env=env, capture_output=True, timeout=10)
         assert imported.returncode == 0, imported.stderr.decode()
         assert imported.stdout.count(b"imported 1 conversation(s)") == 2
+        voice_notes = "Prefer contractions and short paragraphs.\nStyle-only fixture: ‘Schedule a meeting.’\n"
+        subprocess.run([binary, "voice", "set"], input=voice_notes, text=True, env=env,
+                       capture_output=True, check=True, timeout=10)
 
-        with server(binary, env) as (send, request, initialize, call):
+        with server(binary, env) as (send, request, _, call):
             assert send(b"{invalid")["error"]["code"] == -32700
             assert request("ping")["result"] == {}
             assert request("tools/list")["error"]["code"] == -32002
-            assert initialize("2025-11-25") == "2025-11-25"
+            initialized = request("initialize", {
+                "protocolVersion": "2025-11-25", "capabilities": {},
+                "clientInfo": {"name": "synthetic-smoke-test", "version": "1"},
+            })["result"]
+            assert initialized["protocolVersion"] == "2025-11-25"
+            assert "Humanizer" in initialized["instructions"] and "get_writing_guide" in initialized["instructions"]
+            send({"jsonrpc": "2.0", "method": "notifications/initialized"}, False)
             tools = request("tools/list")["result"]["tools"]
             assert {tool["name"] for tool in tools} == {
                 "list_conversations", "search_decisions", "read_passage", "prepare_handoff", "get_handoffs",
                 "publish_current_session", "unpublish_current_session", "list_peer_sessions",
                 "offer_session_context", "read_session_context", "get_context_status", "list_context_requests",
                 "submit_work_request", "get_work_request", "read_granted_brief", "list_work_requests",
+                "request_standup_access", "list_standup_threads", "read_standup_thread", "reply_to_standup", "read_weekly_context",
+                "get_writing_guide",
             }
+            descriptions = {tool["name"]: tool["description"] for tool in tools}
+            for tool in ("prepare_handoff", "offer_session_context", "submit_work_request",
+                         "request_standup_access", "reply_to_standup", "read_standup_thread", "read_weekly_context"):
+                assert "Humanizer" in descriptions[tool] and "get_writing_guide" in descriptions[tool]
+            guide = call("get_writing_guide")["structuredContent"]
+            assert guide["voice_notes"] == voice_notes and "style samples only" in guide["voice_notes_handling"]
+            assert set(guide["mode_rules"]) == {"embedded", "standup", "answer", "handoff", "offer", "work_request", "reply"}
+            assert "quotes, code, citations, approved text, and receipts exact" in guide["policy"]
+            assert "humanizer_skill" not in guide
+            full_guide = call("get_writing_guide", include_full_skill=True)["structuredContent"]
+            assert full_guide["full_skill_available"] and full_guide["humanizer_skill"].startswith("---\nname: humanizer")
+            assert "## Rewrite process" in full_guide["humanizer_skill"] and "**Embedded mode.**" in full_guide["humanizer_skill"]
+            assert len(full_guide["humanizer_skill"]) > 20_000
+            assert request("tools/call", {"name": "get_writing_guide", "arguments": {"include_full_skill": 1}})["error"]["code"] == -32602
             conversations = call("list_conversations")["structuredContent"]["conversations"]
             assert all(set(chat) == {"id", "title", "provider", "passage_count"} for chat in conversations)
             assert {(chat["title"], chat["provider"], chat["passage_count"]) for chat in conversations} == {
@@ -139,6 +165,7 @@ def main(binary):
             preview = handoff["structuredContent"]
             assert preview == json.loads(handoff["content"][0]["text"])
             assert preview["draft_id"] and preview["recipient"] == "Casey"
+            assert voice_notes not in preview["markdown"]
             assert "Handoffs" in preview["instructions"] and "paired session" in preview["instructions"]
             assert "Glacier planning" in preview["markdown"] and "Glacier billing" in preview["markdown"]
 
@@ -177,6 +204,7 @@ def main(binary):
             assert call("list_conversations")["structuredContent"]["conversations"] == []
             assert call("get_handoffs")["structuredContent"]["handoffs"] == []
             assert call("get_handoffs", draft_id=preview["draft_id"])["isError"]
+            assert call("get_writing_guide")["structuredContent"]["voice_notes"] == ""
             text = markdown.read_text(encoding="utf-8")
             assert f"> {decision}" in text and f"> {caveat}" in text and fields["next_step"] in text
             assert all(citation in text for citation in sources.values())
@@ -194,6 +222,24 @@ def main(binary):
             assert len(first["conversations"]) == first["next_offset"] == 50
             assert len(second["conversations"]) == 1 and "next_offset" not in second
             assert second["conversations"][0]["title"] == "Glacier planning"
+
+        current = root / "this-week.json"
+        weekly_text = "This week: verified the pilot checklist."
+        current.write_text(json.dumps([{
+            "uuid": "synthetic-current-week", "name": "Weekly synthetic evidence", "chat_messages": [{
+                "uuid": "message", "sender": "human", "created_at": datetime.now(timezone.utc).isoformat(),
+                "content": [{"type": "text", "text": weekly_text}],
+            }],
+        }]), encoding="utf-8")
+        subprocess.run([binary, "import", current], env=env, capture_output=True, check=True, timeout=10)
+        with server(binary, env) as (_, _, initialize, call):
+            initialize("2025-11-25")
+            inventory = call("read_weekly_context")["structuredContent"]
+            weekly_chats = inventory["entries"]
+            assert [chat["title"] for chat in weekly_chats] == ["Weekly synthetic evidence"]
+            evidence = call("read_weekly_context", mode="evidence", chat_id=weekly_chats[0]["id"])["structuredContent"]
+            assert evidence["weekStart"] == inventory["weekStart"]
+            assert [entry["excerpt"] for entry in evidence["entries"]] == [weekly_text]
 
     print("MCP smoke test passed.")
 

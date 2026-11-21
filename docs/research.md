@@ -50,3 +50,19 @@ The first MVP ran through the installed, signed-in Claude Code client on this Ma
 Codex CLI 0.171.0-alpha.13, signed in with ChatGPT, searched both sample chats, read both exact source passages, and persisted a handoff with their citations. A separate Codex session recovered the dates, rationale, and next action from Claude’s exported Markdown with zero tool calls. In the connected-session pilot, Claude sent a synthetic access-review request to an already-running Codex session through two Hereforth profiles on loopback. The native recipient Inbox displayed the exact text. Codex collected it after approval and correctly distinguished review from an actual access grant. This exercised the CLI clients on one Mac.
 
 In the durable-request pilot, the receiver had zero published sessions. Claude Code submitted a Hereforth brief access request on the sender’s behalf. In **Work Requests** the recipient inspected the exact Markdown and authorized one read-only revision for seven days. The UI marked the request fulfilled and recorded an expiry immediately. A fresh signed-in Codex session retrieved the exact reviewed bytes. After revocation in the UI, the same requester received a revoked status and could no longer retrieve the grant. With approvals disabled for a noninteractive Codex run, Codex declined to submit an outbound work request, and the queue stayed empty until the authorized Claude submission. Ordinary client permissions still apply. No corporate system or real teammate was contacted.
+
+### Standup and weekly storage checks
+
+In two isolated profiles on the same Mac, Claude found no existing thread and asked for a standup. The owner approved one sentence in Work Requests. Claude read it and asked who owned the docs review. The owner replied from the Mac app. A fresh Codex chat, given only the peer name, found the same thread and identified the reviewer from the third message. The peer could no longer list the thread, read it by ID, or reply after the owner revoked access. On the private side, Codex distinguished a Tuesday proposal from a Friday decision across the week's evidence. It also surfaced a one-message support handoff and reported the undated import separately.
+
+On an Apple M5 Pro, a release build imported 6,300 synthetic conversations containing 75,600 passages. Of those passages, 3,600 fell within the test week. The database occupied 88.7 MB. Import took 3.88 seconds and an identical reimport took 1.84 seconds. The median of 31 warm first-page queries was 0.21 ms for weekly evidence and 1.56 ms for the conversation inventory. These figures measure local retrieval. Assistant calls and network latency add to the time a person sees.
+
+```sh
+HEREFORTH_BENCHMARK=1 swift test --configuration release --filter WeeklyContextTests
+```
+
+A separate import of the same 9,600 synthetic passages into fresh libraries produced a 30.5 MB file on the previous release and a 20.9 MB file with the new indexes. An upgraded library preserved the source citations and passed SQLite's full-text integrity check. SQLite can reuse pages freed by the migration, so the size of an existing file on disk can stay the same. [SQLite external-content full-text tables](https://www.sqlite.org/fts5.html#external_content_tables)
+
+### Writing voice in connected assistants
+
+With a local test voice profile, a fresh Codex client asked the installed helper for its writing guide when prompted simply to draft a release note. The draft preserved the two options, the author's preference, the retry count, and a Friday test. Claude Code filed a one-sentence review request in a paired test profile. In a separate request to send an exact sentence, the receiving database contained the supplied casing, punctuation, and double space byte for byte. Neither test sent a message to a real teammate.

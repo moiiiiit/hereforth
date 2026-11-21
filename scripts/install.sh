@@ -36,6 +36,8 @@ bundle="$stage/Hereforth.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 install -m 644 scripts/Info.plist "$bundle/Contents/Info.plist"
 install -m 755 "$bin/HereforthApp" "$bin/hereforth" "$bundle/Contents/MacOS/"
+resource_bundle="Hereforth_HereforthCore.bundle"
+/usr/bin/ditto "$bin/$resource_bundle" "$bundle/Contents/Resources/$resource_bundle"
 
 iconset="$stage/Hereforth.iconset"
 mkdir "$iconset"

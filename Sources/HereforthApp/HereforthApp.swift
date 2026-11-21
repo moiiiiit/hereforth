@@ -45,6 +45,11 @@ private struct LibraryView: View {
     @State private var briefs: [Brief] = []
     @State private var offers: [ContextOffer] = []
     @State private var requests: [WorkRequest] = []
+    @State private var standupThreads: [StandupThread] = []
+    @State private var standupPage: StandupPage = .week
+    @State private var standupSelection: StandupThread.ID?
+    @State private var openingUpdates: [String: String] = [:]
+    @State private var standupReplies: [String: String] = [:]
     @State private var store: Store?
     @State private var selection: String? = "conversations"
     @State private var selectedChat: ChatInfo.ID?
@@ -103,6 +108,8 @@ private struct LibraryView: View {
                         .tag("inbox")
                     queueRow("Work Requests", icon: "checklist", count: pendingWork)
                         .tag("requests")
+                    Label("Standup", systemImage: "calendar")
+                        .tag("standup")
                     if briefs.isEmpty {
                         Label("Local Drafts", systemImage: "doc.text")
                             .tag("handoffs")
@@ -135,6 +142,15 @@ private struct LibraryView: View {
                         briefs: briefs,
                         previewDraft: previewWorkRequest,
                         review: reviewWorkRequest,
+                        revoke: revokeWorkRequest,
+                        approveStandup: approveStandup,
+                        openStandup: openStandup,
+                        openingUpdates: $openingUpdates
+                    )
+                } else if selection == "standup", let store {
+                    StandupView(
+                        store: store, threads: standupThreads,
+                        page: $standupPage, selection: $standupSelection, replies: $standupReplies,
                         revoke: revokeWorkRequest
                     )
                 } else if let brief = selectedBrief {
@@ -210,6 +226,9 @@ private struct LibraryView: View {
                 }
                 if let incoming = try? store?.workRequests() {
                     requests = incoming
+                }
+                if let updated = try? store?.standupThreads() {
+                    standupThreads = updated
                 }
             }
         }
@@ -412,7 +431,7 @@ private struct LibraryView: View {
     private func validateSelection() {
         if selection == "handoffs", let latest = briefs.first {
             selection = "brief:" + latest.id
-        } else if selection != "handoffs" && selection != "inbox" && selection != "requests" && selectedBrief == nil {
+        } else if !["handoffs", "inbox", "requests", "standup"].contains(selection ?? ""), selectedBrief == nil {
             selection = "conversations"
         }
     }
@@ -424,11 +443,13 @@ private struct LibraryView: View {
             let updatedBriefs = try store.briefs()
             let incoming = try store.contextInbox()
             let incomingWork = try store.workRequests()
+            let updatedThreads = try store.standupThreads()
             self.store = store
             chats = updatedChats
             briefs = updatedBriefs
             offers = incoming
             requests = incomingWork
+            standupThreads = updatedThreads
             if !visibleChats.contains(where: { $0.id == selectedChat }) { selectedChat = nil }
             validateSelection()
         } catch {
@@ -461,8 +482,39 @@ private struct LibraryView: View {
 
     private func revokeWorkRequest(_ id: String) throws {
         let store = try self.store ?? Store()
-        defer { if let updated = try? store.workRequests() { requests = updated } }
+        defer {
+            if let updated = try? store.workRequests() { requests = updated }
+            if let updated = try? store.standupThreads() { standupThreads = updated }
+        }
         try store.revokeWorkRequest(id: id)
+    }
+
+    private func approveStandup(_ id: String, _ text: String) throws {
+        let store = try self.store ?? Store()
+        let thread = try store.reviewStandupRequest(id: id, approvedText: text)
+        if let updated = try? store.workRequests() { requests = updated }
+        if let updated = try? store.standupThreads() { standupThreads = updated }
+        showStandupThread(thread.id)
+    }
+
+    private func openStandup(_ requestID: String) {
+        do {
+            let store = try self.store ?? Store()
+            standupThreads = try store.standupThreads()
+            guard let thread = standupThreads.first(where: { $0.requestID == requestID }) else {
+                problem = "The standup thread couldn’t be found."
+                return
+            }
+            showStandupThread(thread.id)
+        } catch {
+            problem = "The standup thread couldn’t be opened. \(error.localizedDescription)"
+        }
+    }
+
+    private func showStandupThread(_ id: StandupThread.ID) {
+        standupPage = .threads
+        standupSelection = id
+        selection = "standup"
     }
 
     private func remove(_ chat: ChatInfo) {

@@ -132,14 +132,14 @@ final class PeerListener {
                       let requestID = UUID(uuidString: work.request_id),
                       PeerWorkRequest.categories.contains(work.category), work.body.utf8.count <= 4_000,
                       work.brief_id == nil || UUID(uuidString: work.brief_id ?? "") != nil,
-                      (work.brief_id == nil && work.requests_brief != true) || work.category == "data_access" else {
+                      (work.brief_id == nil && work.requests_brief != true && work.requests_standup != true) || work.category == "data_access" else {
                     send(connection, status: 400)
                     return
                 }
                 do {
                     let id = try store.submitWorkRequest(sender: sender, requestID: requestID.uuidString,
                                                          category: work.category, body: work.body, briefID: work.brief_id,
-                                                         requestsBrief: work.requests_brief ?? false)
+                                                         requestsBrief: work.requests_brief ?? false, requestsStandup: work.requests_standup ?? false)
                     send(connection, status: 200, body: try JSONEncoder().encode(["id": id]))
                 } catch {
                     send(connection, status: 409)
@@ -159,6 +159,38 @@ final class PeerListener {
                     data = try encoder.encode(store.readWorkRequestGrant(sender: sender, requestID: requestID.uuidString))
                 }
                 send(connection, status: 200, body: data)
+            case ("POST", "/v1/standup-threads"):
+                guard request.headers["content-type"] == "application/json",
+                      let query = try? JSONDecoder().decode(PeerStandupList.self, from: body), query.offset >= 0 else {
+                    send(connection, status: 400)
+                    return
+                }
+                let threads = try store.peerStandupThreads(sender: sender, offset: query.offset)
+                send(connection, status: 200, body: try JSONEncoder().encode(threads))
+            case ("POST", "/v1/standup-read"):
+                guard request.headers["content-type"] == "application/json",
+                      let query = try? JSONDecoder().decode(PeerStandupRead.self, from: body),
+                      UUID(uuidString: query.thread_id) != nil, query.after >= 0 else {
+                    send(connection, status: 400)
+                    return
+                }
+                let messages = try store.peerStandupMessages(sender: sender, threadID: query.thread_id, after: query.after)
+                send(connection, status: 200, body: try JSONEncoder().encode(messages))
+            case ("POST", "/v1/standup-reply"):
+                guard request.headers["content-type"] == "application/json",
+                      let reply = try? JSONDecoder().decode(PeerStandupReply.self, from: body),
+                      UUID(uuidString: reply.thread_id) != nil, UUID(uuidString: reply.request_id) != nil,
+                      reply.body.utf8.count <= 4_000 else {
+                    send(connection, status: 400)
+                    return
+                }
+                do {
+                    let saved = try store.replyToPeerStandup(sender: sender, threadID: reply.thread_id,
+                                                           body: reply.body, requestID: reply.request_id)
+                    send(connection, status: 200, body: try JSONEncoder().encode(saved))
+                } catch {
+                    send(connection, status: 409)
+                }
             default:
                 send(connection, status: 404)
             }

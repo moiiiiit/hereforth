@@ -7,6 +7,9 @@ struct WorkRequests: View {
     let previewDraft: (String, String) throws -> WorkRequestPreview
     let review: (String, Bool, WorkRequestPreview?) throws -> Void
     let revoke: (String) throws -> Void
+    let approveStandup: (String, String) throws -> Void
+    let openStandup: (String) -> Void
+    @Binding var openingUpdates: [String: String]
 
     @State private var selectedCategory: WorkCategory?
     @State private var selection: WorkRequest.ID?
@@ -67,9 +70,9 @@ struct WorkRequests: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(verbatim: request.body.trimmingCharacters(in: .whitespacesAndNewlines))
                                     .fontWeight(.medium)
-                                Text("\(request.sender) · \(WorkCategory(request.category).label)")
+                                Text("\(request.sender) · \(requestLabel(request))")
                                     .foregroundStyle(.secondary)
-                                Text(workStatus(request.state))
+                                Text(workStatus(request))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -85,7 +88,12 @@ struct WorkRequests: View {
 
                     if let request = visibleRequests.first(where: { $0.id == selection }) {
                         WorkRequestDetail(
-                            request: request, briefs: briefs, previewDraft: previewDraft, review: review, revoke: revoke
+                            request: request, briefs: briefs, previewDraft: previewDraft, review: review, revoke: revoke,
+                            approveStandup: approveStandup, openStandup: openStandup,
+                            openingText: Binding(
+                                get: { openingUpdates[request.id] ?? "" },
+                                set: { openingUpdates[request.id] = $0 }
+                            )
                         )
                         .id(request.id)
                         .frame(minWidth: 375)
@@ -110,12 +118,16 @@ private struct WorkRequestDetail: View {
     let previewDraft: (String, String) throws -> WorkRequestPreview
     let review: (String, Bool, WorkRequestPreview?) throws -> Void
     let revoke: (String) throws -> Void
+    let approveStandup: (String, String) throws -> Void
+    let openStandup: (String) -> Void
+    @Binding var openingText: String
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedDraftID: Brief.ID?
     @State private var preview: WorkRequestPreview?
     @State private var errorMessage: String?
     @State private var confirmingRevoke = false
+    @State private var reviewingOpening = false
 
     private var pending: Bool { request.state == "pending" }
     private var canGrantBrief: Bool { request.requestsBrief }
@@ -130,12 +142,12 @@ private struct WorkRequestDetail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(WorkCategory(request.category).label)
+                Text(requestLabel(request))
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
                 Text("From \(request.sender)")
                     .textSelection(.enabled)
-                Text(workStatus(request.state))
+                Text(workStatus(request))
                     .font(.callout.weight(.medium))
                     .foregroundStyle(.secondary)
             }
@@ -144,7 +156,9 @@ private struct WorkRequestDetail: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    if let preview, pending {
+                    if reviewingOpening && pending {
+                        standupPreview
+                    } else if let preview, pending {
                         grantPreview(preview)
                     } else {
                         Text("Request")
@@ -163,15 +177,18 @@ private struct WorkRequestDetail: View {
                         } else if pending && canGrantBrief {
                             Divider()
                             draftPicker
+                        } else if pending && request.requestsStandup {
+                            Divider()
+                            standupEditor
                         }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
             }
-            .id(preview?.digest)
+            .id(reviewingOpening ? "standup-opening" : preview?.digest)
 
-            if pending || request.state == "fulfilled" {
+            if pending || request.state == "fulfilled" || hasClosedStandup {
                 Divider()
                 requestActions
                     .padding(16)
@@ -185,10 +202,15 @@ private struct WorkRequestDetail: View {
         } message: {
             Text(errorMessage ?? "")
         }
-        .confirmationDialog("Revoke draft read access?", isPresented: $confirmingRevoke) {
-            Button("Revoke Read Access", role: .destructive) { revokeGrant() }
+        .confirmationDialog(request.requestsStandup ? "Revoke standup access?" : "Revoke draft read access?",
+                            isPresented: $confirmingRevoke) {
+            Button(request.requestsStandup ? "Revoke Standup Access" : "Revoke Read Access", role: .destructive) {
+                revokeGrant()
+            }
         } message: {
-            Text("This stops future reads by \(request.sender).")
+            Text(request.requestsStandup
+                 ? "This closes the thread to \(request.sender)."
+                 : "This stops future reads by \(request.sender).")
         }
     }
 
@@ -241,9 +263,41 @@ private struct WorkRequestDetail: View {
         }
     }
 
+    private var standupEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Opening update")
+                .font(.headline)
+            Text("Write the update you want to share. The Hereforth thread is available to you and \(request.sender) for 7 days.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            TextEditor(text: $openingText)
+                .font(.body)
+                .frame(height: 135)
+                .accessibilityLabel("Standup opening update")
+                .border(.quaternary)
+        }
+    }
+
+    private var standupPreview: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button("Edit Update") { reviewingOpening = false }
+            Text("Opening update")
+                .font(.title2.weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
+            Text("You and \(request.sender) · 7 days")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+            Divider()
+            Text(verbatim: openingText)
+                .textSelection(.enabled)
+                .lineSpacing(3)
+        }
+    }
+
     private var requestActions: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if pending && !canGrantBrief {
+            if pending && !canGrantBrief && !request.requestsStandup {
                 Text("Record that you reviewed this request. Carry out any follow-up through your organization’s process.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -253,7 +307,14 @@ private struct WorkRequestDetail: View {
             HStack {
                 Spacer()
                 if request.state == "fulfilled" {
-                    Button("Revoke Read Access…") { confirmingRevoke = true }
+                    if request.requestsStandup {
+                        Button("Revoke Access…") { confirmingRevoke = true }
+                        primaryButton("Open Thread") { openStandup(request.id) }
+                    } else {
+                        Button("Revoke Read Access…") { confirmingRevoke = true }
+                    }
+                } else if hasClosedStandup {
+                    Button("Open Thread") { openStandup(request.id) }
                 } else {
                     Button("Decline") { recordDecision(approve: false) }
                     if canGrantBrief {
@@ -263,12 +324,23 @@ private struct WorkRequestDetail: View {
                             primaryButton("Review Draft") { loadPreview() }
                                 .disabled(!availableBriefs.contains { $0.id == draftID })
                         }
+                    } else if request.requestsStandup {
+                        if reviewingOpening {
+                            primaryButton("Approve & Open Thread") { approveOpening() }
+                        } else {
+                            primaryButton("Review Update") { reviewingOpening = true }
+                                .disabled(openingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
                     } else {
                         primaryButton("Mark Reviewed") { recordDecision(approve: true) }
                     }
                 }
             }
         }
+    }
+
+    private var hasClosedStandup: Bool {
+        request.requestsStandup && ["revoked", "expired"].contains(request.state)
     }
 
     private func primaryButton(_ label: String, action: @escaping () -> Void) -> some View {
@@ -292,8 +364,22 @@ private struct WorkRequestDetail: View {
         do {
             try review(request.id, approve, approve ? preview : nil)
             preview = nil
+            if request.requestsStandup {
+                openingText = ""
+                reviewingOpening = false
+            }
         } catch {
             preview = nil
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func approveOpening() {
+        do {
+            try approveStandup(request.id, openingText)
+            openingText = ""
+            reviewingOpening = false
+        } catch {
             errorMessage = error.localizedDescription
         }
     }
@@ -325,14 +411,18 @@ private enum WorkCategory: String, CaseIterable {
     }
 }
 
-private func workStatus(_ state: String) -> String {
-    switch state {
+private func workStatus(_ request: WorkRequest) -> String {
+    switch request.state {
     case "pending": "Pending review"
     case "reviewed": "Reviewed"
     case "declined": "Declined"
-    case "fulfilled": "Fulfilled · Read access granted"
-    case "revoked": "Read access revoked"
-    case "expired": "Read access expired"
+    case "fulfilled": request.requestsStandup ? "Fulfilled · Thread opened" : "Fulfilled · Read access granted"
+    case "revoked": request.requestsStandup ? "Standup access revoked" : "Read access revoked"
+    case "expired": request.requestsStandup ? "Standup access expired" : "Read access expired"
     default: "Unavailable"
     }
+}
+
+private func requestLabel(_ request: WorkRequest) -> String {
+    request.requestsStandup ? "Standup access" : WorkCategory(request.category).label
 }

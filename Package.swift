@@ -10,7 +10,7 @@ let package = Package(
     ],
     targets: [
         .systemLibrary(name: "CSQLite"),
-        .target(name: "HereforthCore", dependencies: ["CSQLite"]),
+        .target(name: "HereforthCore", dependencies: ["CSQLite"], resources: [.copy("Resources/Humanizer")]),
         .executableTarget(name: "hereforth", dependencies: ["HereforthCore"]),
         .executableTarget(name: "HereforthApp", dependencies: ["HereforthCore"]),
         .testTarget(name: "HereforthCoreTests", dependencies: ["HereforthCore"])

@@ -2,7 +2,7 @@
 
 # Hereforth
 
-Hereforth is a free, MIT-licensed personal assistant for macOS. Ask your own Claude or Codex what you decided across chats. Connect with a teammate’s Hereforth to send context to a named session or leave a request for them to review at their desk. Each person’s Mac holds their own library. The connected assistant supplies the model.
+Hereforth is a free, MIT-licensed personal assistant for macOS. Ask your own Claude or Codex what you decided across chats this week, or ask a teammate what they're working on. Each person's Mac holds their private library. Teammates can share a standup thread, send context to a named session, or leave a work request for later. The connected assistant supplies the model.
 
 ## Install
 
@@ -31,6 +31,28 @@ codex mcp add hereforth -- "$HOME/Applications/Hereforth.app/Contents/MacOS/here
 You can also ask **“Which chats have I imported?”** or **“Show me the local draft I prepared for Ryan.”** Local drafts can be edited and exported as Markdown. Search matches words in titles and passages. Returned material can reach the assistant’s model provider. The local MCP helper works with the app window closed. Peer delivery also needs the recipient’s peer service to be reachable.
 
 To import a single Claude Code chat, run `/export discussion.txt` inside that chat and select the file in Hereforth. Text imports preserve the transcript as written. Provider JSON also supplies structured speakers and timestamps. [Claude Code export command](https://code.claude.com/docs/en/commands)
+
+## Ask for a teammate’s standup
+
+1. After [pairing both Macs](docs/session-context.md), ask your assistant **“Ask Ryan for his standup so I can plan the docs review.”** Ryan can receive the request with all his assistant chats closed.
+2. Ryan opens **Work Requests** and writes the update he wants to share. On approval, Hereforth creates a new, two-person thread with those exact words as the opening message. The grant lasts seven days and Ryan can revoke it earlier.
+3. From a fresh Claude or Codex chat, ask **“What did Ryan say is blocked?”** Your assistant can find the thread, read the dated updates, and answer. If the information is missing, say **“Ask Ryan in that thread.”** His reply stays with the original update. [Standup walkthrough](docs/teammate-knowledge.md#ask-for-someones-standup)
+
+For your own standup, ask **“Which conversations contributed to my work this week? What changed, and what's still open?”** Hereforth uses timestamps inside imported chats and a Monday-start week in your Mac's time zone. Undated text remains searchable in the library. You choose what to share from that evidence.
+
+## Write in your own voice
+
+Hereforth asks the connected assistant to use Humanizer when it drafts a request, standup, reply, summary, or handoff. The connector includes the writing guide for clients without the plugin. For a message like **“Send exactly: Docs review is done.”**, the assistant passes on the words you supplied. Hereforth delivers the same text you reviewed.
+
+To personalize the default, put a few notes about how you write in a text file. For example, “Lead with what I need. When I recommend something, say why. Keep a quick question to one line.” Set those notes on your Mac with the installed helper:
+
+```sh
+helper="$HOME/Applications/Hereforth.app/Contents/MacOS/hereforth"
+"$helper" voice set < my-writing-notes.txt
+"$helper" voice show
+```
+
+`"$helper" voice clear` restores the general writing style. Your voice notes live in your local library. Your connected assistant can read them when it composes a message. Teammates receive the message you share. [Humanizer](https://github.com/blader/humanizer)
 
 The default library is in `~/Library/Application Support/Hereforth/`. To load the sample into that library from a terminal, run:
 

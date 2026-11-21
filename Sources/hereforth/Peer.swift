@@ -22,6 +22,20 @@ struct PeerWorkRequest: Codable {
     let body: String
     let brief_id: String?
     let requests_brief: Bool?
+    let requests_standup: Bool?
+}
+
+struct PeerStandupList: Codable { let offset: Int }
+
+struct PeerStandupRead: Codable {
+    let thread_id: String
+    let after: Int
+}
+
+struct PeerStandupReply: Codable {
+    let thread_id: String
+    let request_id: String
+    let body: String
 }
 
 struct PeerSettings: Codable {

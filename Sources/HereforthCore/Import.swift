@@ -7,10 +7,12 @@ public struct HereforthError: LocalizedError {
 }
 
 typealias Object = [String: Any]
+private let hexDigits = Array("0123456789abcdef".utf8)
 
 func digest(_ parts: String...) -> String {
     let input = parts.map { "\($0.utf8.count):\($0)" }.joined()
-    return SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
+    let hex = SHA256.hash(data: Data(input.utf8)).flatMap { [hexDigits[Int($0 >> 4)], hexDigits[Int($0 & 15)]] }
+    return String(decoding: hex, as: UTF8.self)
 }
 
 struct Passage {
@@ -50,14 +52,15 @@ enum Importer {
         else if let single = value as? Object { objects = [single] }
         else { throw HereforthError("Expected an array of exported conversations.") }
         guard !objects.isEmpty else { throw HereforthError("This export has no conversations.") }
+        let dates = ExportDates()
         return try objects.map { obj in
-            if let mapping = obj["mapping"] as? [String: Object] { return try chatGPT(obj, mapping) }
-            if let messages = obj["chat_messages"] as? [Object] { return try claude(obj, messages) }
+            if let mapping = obj["mapping"] as? [String: Object] { return try chatGPT(obj, mapping, dates) }
+            if let messages = obj["chat_messages"] as? [Object] { return try claude(obj, messages, dates) }
             throw HereforthError("Unrecognized JSON. Choose conversations.json from a Claude or ChatGPT export.")
         }
     }
 
-    private static func chatGPT(_ obj: Object, _ mapping: [String: Object]) throws -> Chat {
+    private static func chatGPT(_ obj: Object, _ mapping: [String: Object], _ dates: ExportDates) throws -> Chat {
         guard let id = (obj["conversation_id"] ?? obj["id"]) as? String, !id.isEmpty,
               let current = obj["current_node"] as? String else {
             throw HereforthError("ChatGPT conversation is missing its ID or active branch.")
@@ -81,13 +84,13 @@ enum Importer {
             let body = parts.compactMap { $0 as? String }.joined(separator: "\n")
             guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
             messages.append(Passage(id: msg["id"] as? String ?? key, role: role,
-                                    date: date(msg["create_time"]), body: body))
+                                    date: dates.normalize(msg["create_time"]), body: body))
         }
         return Chat(id: digest("ChatGPT", id), provider: "ChatGPT", title: obj["title"] as? String ?? "Untitled chat",
                     passages: messages.reversed())
     }
 
-    private static func claude(_ obj: Object, _ rows: [Object]) throws -> Chat {
+    private static func claude(_ obj: Object, _ rows: [Object], _ dates: ExportDates) throws -> Chat {
         guard let id = obj["uuid"] as? String, !id.isEmpty else { throw HereforthError("Claude conversation is missing its ID.") }
         let messages = try rows.compactMap { row -> Passage? in
             guard let sender = row["sender"] as? String, ["human", "assistant"].contains(sender) else { return nil }
@@ -96,21 +99,24 @@ enum Importer {
             let visible = body.isEmpty ? (row["text"] as? String ?? "") : body
             guard !visible.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
             guard let key = row["uuid"] as? String else { throw HereforthError("Claude message is missing its ID.") }
-            return Passage(id: key, role: sender, date: date(row["created_at"]), body: visible)
+            return Passage(id: key, role: sender, date: dates.normalize(row["created_at"]), body: visible)
         }
         return Chat(id: digest("Claude", id), provider: "Claude", title: obj["name"] as? String ?? "Untitled chat", passages: messages)
     }
 
-    private static func date(_ value: Any?) -> String {
+    private struct ExportDates {
         let formatter = ISO8601DateFormatter()
-        if let seconds = value as? Double, seconds.isFinite, abs(seconds) < 253402300800 {
-            return formatter.string(from: Date(timeIntervalSince1970: seconds))
+        let fractional = ISO8601DateFormatter()
+
+        init() { fractional.formatOptions.insert(.withFractionalSeconds) }
+
+        func normalize(_ value: Any?) -> String {
+            if let seconds = value as? Double, seconds.isFinite, abs(seconds) < 253402300800 {
+                return formatter.string(from: Date(timeIntervalSince1970: seconds))
+            }
+            guard let text = value as? String,
+                  let parsed = formatter.date(from: text) ?? fractional.date(from: text) else { return "" }
+            return formatter.string(from: parsed)
         }
-        guard let text = value as? String else { return "" }
-        if let parsed = formatter.date(from: text) { return formatter.string(from: parsed) }
-        formatter.formatOptions.insert(.withFractionalSeconds)
-        guard let parsed = formatter.date(from: text) else { return "" }
-        formatter.formatOptions.remove(.withFractionalSeconds)
-        return formatter.string(from: parsed)
     }
 }

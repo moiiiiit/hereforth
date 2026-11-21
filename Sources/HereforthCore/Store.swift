@@ -40,23 +40,14 @@ public final class Store {
         try db.transaction {
             try installSessionContextTables()
             try installWorkRequestsTable()
+            try installVoiceNotesTable()
             try db.execute("""
                 CREATE TABLE IF NOT EXISTS chats (
-                    id TEXT PRIMARY KEY, provider TEXT NOT NULL, title TEXT NOT NULL, count INTEGER NOT NULL
+                    id TEXT PRIMARY KEY, provider TEXT NOT NULL, title TEXT NOT NULL, count INTEGER NOT NULL,
+                    source_revision TEXT NOT NULL DEFAULT ''
                 )
                 """)
-            try db.execute("""
-                CREATE TABLE IF NOT EXISTS sources (
-                    citation TEXT PRIMARY KEY, chat_id TEXT NOT NULL, provider TEXT NOT NULL, title TEXT NOT NULL,
-                    role TEXT NOT NULL, date TEXT NOT NULL, body TEXT NOT NULL
-                )
-                """)
-            try db.execute("CREATE INDEX IF NOT EXISTS sources_chat ON sources(chat_id)")
-            try db.execute("""
-                CREATE VIRTUAL TABLE IF NOT EXISTS passages USING fts5(
-                    body, title, citation UNINDEXED, chat_id UNINDEXED
-                )
-                """)
+            try installWeeklyContext()
             try db.execute("""
                 CREATE TABLE IF NOT EXISTS briefs (
                     id TEXT PRIMARY KEY, title TEXT NOT NULL, recipient TEXT NOT NULL, markdown TEXT NOT NULL
@@ -73,27 +64,29 @@ public final class Store {
         }
         let chats = try Importer.read(url)
         return try db.transaction {
+            var changed = false
             for chat in chats {
-                try db.execute("""
-                    INSERT INTO chats VALUES (?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, title = excluded.title,
-                    count = excluded.count
-                    """, [chat.id, chat.provider, chat.title, String(chat.passages.count)])
-                try clearSources(for: chat.id)
-
                 var seen = Set<String>()
-                for passage in chat.passages {
+                let passages = chat.passages.compactMap { passage -> (Passage, String)? in
                     let citation = "hf:" + digest(chat.id, passage.id, passage.role, passage.date, passage.body)
-                    guard seen.insert(citation).inserted else { continue }
-                    try db.execute("INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                   [citation, chat.id, chat.provider, chat.title, passage.role, passage.date, passage.body])
-                    try db.execute("""
-                        INSERT INTO passages(rowid, body, title, citation, chat_id)
-                        SELECT rowid, body, title, citation, chat_id FROM sources WHERE citation = ?
-                        """, [citation])
+                    return seen.insert(citation).inserted ? (passage, citation) : nil
                 }
-                try db.execute("UPDATE chats SET count = ? WHERE id = ?", [String(seen.count), chat.id])
+                let revision = digest(chat.provider, chat.title, passages.map(\.1).joined())
+                let updated = try db.query("""
+                    INSERT INTO chats (id, provider, title, count, source_revision) VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, title = excluded.title,
+                    count = excluded.count, source_revision = excluded.source_revision
+                    WHERE chats.source_revision <> excluded.source_revision RETURNING id
+                    """, [chat.id, chat.provider, chat.title, String(passages.count), revision]) { Database.string($0, 0) }
+                guard !updated.isEmpty else { continue }
+                changed = true
+                try clearSources(for: chat.id)
+                for (passage, citation) in passages {
+                    try db.execute("INSERT INTO sources (citation, chat_id, provider, title, role, date, body) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                                   [citation, chat.id, chat.provider, chat.title, passage.role, passage.date, passage.body])
+                }
             }
+            if changed { try markLibraryChanged() }
             return Set(chats.map(\.id)).count
         }
     }
@@ -108,12 +101,12 @@ public final class Store {
     public func removeChat(_ id: String) throws {
         try db.transaction {
             try clearSources(for: id)
-            try db.execute("DELETE FROM chats WHERE id = ?", [id])
+            let removed = try db.query("DELETE FROM chats WHERE id = ? RETURNING id", [id]) { Database.string($0, 0) }
+            if !removed.isEmpty { try markLibraryChanged() }
         }
     }
 
     private func clearSources(for id: String) throws {
-        try db.execute("DELETE FROM passages WHERE rowid IN (SELECT rowid FROM sources WHERE chat_id = ?)", [id])
         try db.execute("DELETE FROM sources WHERE chat_id = ?", [id])
     }
 
@@ -125,9 +118,9 @@ public final class Store {
         let match = terms.map { "\"\($0)\"" }.joined(separator: " OR ")
         return try db.query("""
             WITH matches AS MATERIALIZED (
-                SELECT citation, chat_id, rank AS score,
+                SELECT s.citation, s.chat_id, rank AS score,
                        snippet(passages, 0, '', '', ' … ', 28) AS excerpt
-                FROM passages WHERE passages MATCH ?
+                FROM passages JOIN sources s ON s.rowid = passages.rowid WHERE passages MATCH ?
             ), ranked AS (
                 SELECT *, row_number() OVER (PARTITION BY chat_id ORDER BY score, citation) AS position
                 FROM matches

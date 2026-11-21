@@ -76,25 +76,34 @@ def owner_harness(root):
     source = root / "main.swift"
     source.write_text('''import Foundation
 
-let store = try Store()
-let args = CommandLine.arguments
-switch args[1] {
-case "create":
-    _ = try store.importFile(URL(fileURLWithPath: args[2]))
-    let hit = try store.search("Glacier").first!
-    let brief = try store.draft(recipient: "Avery", title: "Glacier pilot", decision: "Proceed with the pilot", background: "Synthetic fixture", nextStep: "Confirm checklist", citations: [hit.citation])
-    print(brief.id)
-case "update":
-    try store.updateBrief(args[2], markdown: args[3])
-case "grant":
-    let preview = try store.previewWorkRequest(id: args[2], briefID: args[3])
-    _ = try store.reviewWorkRequest(id: args[2], approve: true, briefID: preview.briefID, digest: preview.digest)
-case "review":
-    _ = try store.reviewWorkRequest(id: args[2], approve: true)
-case "revoke":
-    try store.revokeWorkRequest(id: args[2])
-default:
-    exit(2)
+do {
+    let store = try Store()
+    let args = CommandLine.arguments
+    switch args[1] {
+    case "create":
+        _ = try store.importFile(URL(fileURLWithPath: args[2]))
+        let hit = try store.search("Glacier").first!
+        let brief = try store.draft(recipient: "Avery", title: "Glacier pilot", decision: "Proceed with the pilot", background: "Synthetic fixture", nextStep: "Confirm checklist", citations: [hit.citation])
+        print(brief.id)
+    case "update":
+        try store.updateBrief(args[2], markdown: args[3])
+    case "grant":
+        let preview = try store.previewWorkRequest(id: args[2], briefID: args[3])
+        _ = try store.reviewWorkRequest(id: args[2], approve: true, briefID: preview.briefID, digest: preview.digest)
+    case "review":
+        _ = try store.reviewWorkRequest(id: args[2], approve: true)
+    case "approve-standup":
+        print(try store.reviewStandupRequest(id: args[2], approvedText: args[3]).id)
+    case "decline":
+        _ = try store.reviewWorkRequest(id: args[2], approve: false)
+    case "revoke":
+        try store.revokeWorkRequest(id: args[2])
+    default:
+        exit(2)
+    }
+} catch {
+    FileHandle.standardError.write(Data(error.localizedDescription.utf8))
+    exit(1)
 }
 ''', encoding="utf-8")
     repo = Path(__file__).resolve().parent.parent
@@ -175,7 +184,77 @@ def check_durable(binary, receiver, root, send):
     active_receipt = send("submit_work_request", **active)["structuredContent"]
     command(owner, receiver, "grant", active_receipt["id"], brief_id)
     assert send("read_granted_brief", peer=active["peer"], request_id=active["request_id"])["structuredContent"]["available"]
-    return active["request_id"]
+    return active["request_id"], owner
+
+
+def check_standup(binary, owner, sender, receiver, send):
+    request = dict(peer="Morgan", request_id=str(uuid.uuid4()), reason="Coordinate intake before Friday’s demo.")
+    submitted = send("request_standup_access", **request)["structuredContent"]
+    assert send("request_standup_access", **request)["structuredContent"] == submitted
+    assert send("request_standup_access", **{**request, "reason": "Different reason"})["isError"]
+    assert send("list_standup_threads", peer="Morgan")["structuredContent"] == {"threads": []}
+    lookup = {key: request[key] for key in ("peer", "request_id")}
+    assert send("get_work_request", **lookup)["structuredContent"]["state"] == "pending"
+
+    declined = {**request, "request_id": str(uuid.uuid4())}
+    declined_id = send("request_standup_access", **declined)["structuredContent"]["id"]
+    command(owner, receiver, "decline", declined_id)
+    assert send("get_work_request", peer="Morgan", request_id=declined["request_id"])["structuredContent"]["state"] == "declined"
+    assert send("list_standup_threads", peer="Morgan")["structuredContent"] == {"threads": []}
+
+    update = "Pilot update\n\nFinished intake checks on Tuesday.\nNext: verify the fallback before Friday.\n"
+    raw_citation = "hf:" + "a" * 64
+    unsanitized = subprocess.run([owner, "approve-standup", submitted["id"], update + raw_citation],
+                                 env=receiver, capture_output=True, timeout=5)
+    assert unsanitized.returncode != 0 and b"Remove local Hereforth citations" in unsanitized.stderr
+    thread_id = command(owner, receiver, "approve-standup", submitted["id"], update).decode().strip()
+    assert command(owner, receiver, "approve-standup", submitted["id"], update).decode().strip() == thread_id
+    assert send("get_work_request", **lookup)["structuredContent"]["state"] == "fulfilled"
+    assert send("read_granted_brief", **lookup)["structuredContent"] == {"available": False}
+    arguments = dict(peer="Morgan", thread_id=thread_id)
+    unauthorized = {**arguments, "peer": "Morgan other sender"}
+    assert send("list_standup_threads", peer=unauthorized["peer"])["structuredContent"] == {"threads": []}
+    assert send("read_standup_thread", **unauthorized)["structuredContent"] == {"available": False}
+    peer_reply = {**arguments, "request_id": str(uuid.uuid4()), "body": "Who will check the fallback?"}
+    assert send("reply_to_standup", **{**peer_reply, "peer": unauthorized["peer"]})["isError"]
+    assert send("reply_to_standup", **{**peer_reply, "body": raw_citation})["isError"]
+
+    contents = send("read_standup_thread", **arguments)["structuredContent"]["messages"]
+    assert len(contents) == 1 and set(contents[0]) == {"id", "author", "body", "created_at", "sequence"}
+    assert contents[0]["body"] == update and contents[0]["author"] == "owner" and contents[0]["sequence"] == 1
+    reply = send("reply_to_standup", **peer_reply)["structuredContent"]
+    assert reply["message"]["author"] == "peer" and reply["message"]["sequence"] == 2
+    assert send("reply_to_standup", **peer_reply)["structuredContent"] == reply
+    assert send("reply_to_standup", **{**peer_reply, "body": "Changed reply"})["isError"]
+
+    with server(binary, receiver) as (_, _, initialize, receive):
+        initialize("2025-11-25")
+        entries = receive("list_work_requests")["structuredContent"]["requests"]
+        assert entries[0]["requests_standup"] and "body" not in entries[0]
+        answer = receive("reply_to_standup", thread_id=thread_id, body="I will check it tomorrow.",
+                         request_id=str(uuid.uuid4()))["structuredContent"]["message"]
+        assert answer["author"] == "owner" and answer["sequence"] == 3
+
+    with server(binary, sender) as (_, _, initialize, reopen):
+        initialize("2025-11-25")
+        threads = reopen("list_standup_threads", peer="Morgan")["structuredContent"]["threads"]
+        assert len(threads) == 1 and threads[0]["id"] == thread_id and threads[0]["latest_sequence"] == 3
+        assert set(threads[0]) == {"id", "sender", "state", "expires_at", "work_request_id", "latest_sequence"}
+        assert reopen("read_standup_thread", **arguments, after=2)["structuredContent"]["messages"] == [answer]
+
+    command(owner, receiver, "revoke", submitted["id"])
+    assert send("read_standup_thread", **arguments)["structuredContent"] == {"available": False}
+    assert send("reply_to_standup", **peer_reply)["isError"]
+    expiring = {**request, "request_id": str(uuid.uuid4())}
+    expiring_id = send("request_standup_access", **expiring)["structuredContent"]["id"]
+    expires_thread = command(owner, receiver, "approve-standup", expiring_id, update).decode().strip()
+    assert expires_thread != thread_id
+    with contextlib.closing(sqlite3.connect(Path(receiver["HEREFORTH_HOME"]) / "hereforth.sqlite")) as db:
+        db.execute("UPDATE work_requests SET grant_expires = unixepoch() - 1 WHERE id = ?", (expiring_id,))
+        db.commit()
+    assert send("get_work_request", peer="Morgan", request_id=expiring["request_id"])["structuredContent"]["state"] == "expired"
+    assert send("list_standup_threads", peer="Morgan")["structuredContent"] == {"threads": []}
+    assert send("read_standup_thread", peer="Morgan", thread_id=expires_thread)["structuredContent"] == {"available": False}
 
 
 def main(binary):
@@ -259,7 +338,8 @@ def main(binary):
                     assert [item["id"] for item in listing] == [second["session_id"]]
 
                 assert send("list_peer_sessions", peer="Morgan")["structuredContent"]["sessions"] == []
-                active_grant = check_durable(binary, receiver, root, send)
+                active_grant, owner = check_durable(binary, receiver, root, send)
+                check_standup(binary, owner, sender, receiver, send)
                 command(binary, receiver, "peer", "revoke", "Avery IT")
                 assert send("list_peer_sessions", peer="Morgan")["isError"]
                 assert send("read_granted_brief", peer="Morgan", request_id=active_grant)["isError"]

@@ -18,6 +18,7 @@ public struct WorkRequest: Codable, Identifiable, Sendable {
     public let receipt: String
     public let briefID: String?
     public let requestsBrief: Bool
+    public let requestsStandup: Bool
 }
 
 public struct WorkRequestPreview: Sendable {
@@ -50,15 +51,21 @@ extension Store {
                 id TEXT PRIMARY KEY, sender TEXT NOT NULL, request_id TEXT NOT NULL,
                 category TEXT NOT NULL, body TEXT NOT NULL, requested_brief_id TEXT,
                 state TEXT NOT NULL DEFAULT 'pending', receipt TEXT NOT NULL DEFAULT '',
-                requests_brief INTEGER NOT NULL DEFAULT 0,
+                requests_brief INTEGER NOT NULL DEFAULT 0, requests_standup INTEGER NOT NULL DEFAULT 0,
                 grant_brief_id TEXT, grant_title TEXT, grant_markdown TEXT, grant_digest TEXT, grant_expires INTEGER,
                 UNIQUE(sender, request_id)
             )
             """)
+        let columns = try db.query("PRAGMA table_info(work_requests)") { Database.string($0, 1) }
+        if !columns.contains("requests_standup") {
+            try db.execute("ALTER TABLE work_requests ADD COLUMN requests_standup INTEGER NOT NULL DEFAULT 0")
+        }
+        try installStandupTables()
     }
 
     public func submitWorkRequest(sender: String, requestID: String, category: String,
-                                  body: String, briefID: String? = nil, requestsBrief: Bool = false) throws -> String {
+                                  body: String, briefID: String? = nil, requestsBrief: Bool = false,
+                                  requestsStandup: Bool = false) throws -> String {
         let requestKey = try workRequestKey(sender: sender, requestID: requestID)
         guard let kind = WorkRequestCategory(rawValue: category), accepts(body, limit: 8_192, multiline: true) else {
             throw HereforthError("Choose a supported category and provide up to 8 KB of plain text.")
@@ -73,17 +80,21 @@ extension Store {
         guard !requestsBrief || kind == .dataAccess else {
             throw HereforthError("Choose data access to request a Hereforth brief.")
         }
+        guard !requestsStandup || (kind == .dataAccess && !requestsBrief) else {
+            throw HereforthError("Standup access is a separate data access request.")
+        }
         return try db.transaction {
             let existing = try db.query("""
-                SELECT id, category, body, requested_brief_id, requests_brief
+                SELECT id, category, body, requested_brief_id, requests_brief, requests_standup
                 FROM work_requests WHERE sender = ? AND request_id = ?
                 """, [sender, requestKey]) { row in
                 (id: Database.string(row, 0), category: Database.string(row, 1), body: Database.string(row, 2),
-                 briefID: Database.string(row, 3), requestsBrief: sqlite3_column_int(row, 4) == 1)
+                 briefID: Database.string(row, 3), requestsBrief: sqlite3_column_int(row, 4) == 1,
+                 requestsStandup: sqlite3_column_int(row, 5) == 1)
             }.first
             if let existing {
                 guard existing.category == category, existing.briefID == (target ?? ""),
-                      existing.requestsBrief == requestsBrief,
+                      existing.requestsBrief == requestsBrief, existing.requestsStandup == requestsStandup,
                       existing.body.utf8.elementsEqual(body.utf8) else {
                     throw HereforthError("This request UUID already refers to different work.")
                 }
@@ -91,9 +102,9 @@ extension Store {
             }
             let id = UUID().uuidString
             try db.execute("""
-                INSERT INTO work_requests (id, sender, request_id, category, body, requested_brief_id, requests_brief)
-                VALUES (?, ?, ?, ?, ?, NULLIF(?, ''), ?)
-                """, [id, sender, requestKey, category, body, target ?? "", requestsBrief ? "1" : "0"])
+                INSERT INTO work_requests (id, sender, request_id, category, body, requested_brief_id, requests_brief, requests_standup)
+                VALUES (?, ?, ?, ?, ?, NULLIF(?, ''), ?, ?)
+                """, [id, sender, requestKey, category, body, target ?? "", requestsBrief ? "1" : "0", requestsStandup ? "1" : "0"])
             return id
         }
     }
@@ -140,6 +151,8 @@ extension Store {
                 guard request.state == "pending" else { throw resolvedWorkRequest() }
                 try db.execute("UPDATE work_requests SET state = 'declined', receipt = ? WHERE id = ?",
                                ["The owner declined this request.", request.id])
+            } else if request.requestsStandup {
+                throw HereforthError("Review the exact update in Hereforth before opening a standup thread.")
             } else if request.requestsBrief {
                 guard let briefID, let target = UUID(uuidString: briefID)?.uuidString, let digest else {
                     throw HereforthError("Select and review the exact brief before granting access.")
@@ -177,18 +190,18 @@ extension Store {
             let request = try workRequest(id)
             if request.state == "revoked" || request.state == "expired" { return }
             guard request.state == "fulfilled" else {
-                throw HereforthError("This request has no active brief grant.")
+                throw HereforthError("This request has no active grant.")
             }
             try db.execute("""
                 UPDATE work_requests SET state = 'revoked', receipt = ?, grant_markdown = NULL WHERE id = ?
-                """, ["The owner revoked this brief grant.", request.id])
+                """, [request.requestsStandup ? "The owner revoked access to the standup thread." : "The owner revoked this brief grant.", request.id])
         }
     }
 
     private static var workRequestSelection: String {
         """
         SELECT id, sender, category, body, \(workState), \(workReceipt),
-               COALESCE(grant_brief_id, requested_brief_id), requests_brief
+               COALESCE(grant_brief_id, requested_brief_id), requests_brief, requests_standup
         FROM work_requests
         """
     }
@@ -218,7 +231,8 @@ extension Store {
                            category: Database.string(row, 2), body: Database.string(row, 3),
                            state: Database.string(row, 4), receipt: Database.string(row, 5),
                            briefID: briefID.isEmpty ? nil : briefID,
-                           requestsBrief: sqlite3_column_int(row, 7) == 1)
+                           requestsBrief: sqlite3_column_int(row, 7) == 1,
+                           requestsStandup: sqlite3_column_int(row, 8) == 1)
     }
 
     private func workRequestKey(sender: String, requestID: String) throws -> String {

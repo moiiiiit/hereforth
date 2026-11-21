@@ -79,6 +79,8 @@ Pilot with three teammates. Ask for the standup from Claude, then ask who needs 
 
 ## Replacing routine status syncs
 
+The one-to-one path starts with a natural request such as “Ask Ryan for his standup.” Approval creates a dedicated Hereforth thread with the owner's reviewed opening update. Follow-ups stay in the thread and either assistant can reopen it. The owner's weekly evidence is a private input to preparing an update. The team-wide read should roll up the latest owner updates a caller can access, preserve their timestamps, and let the caller follow up in the corresponding thread. [Standup access and follow-ups](teammate-knowledge.md#ask-for-someones-standup)
+
 Pilot with one recurring project check-in. Before the next occurrence, ask Hereforth “What changed since our last update, what's blocked, and who needs to decide?” Draft a short update from the prior published version and newer evidence. Include the time covered, links to the evidence the audience can read, the person who could unblock the work, and any decision needed. An unknown owner or stale status should stay visible as such. Have the project owner review and publish the update to named teammates. Each reader can ask follow-up questions against their own grants. [Teammate sharing design](teammate-knowledge.md)
 
 Show readers which questions have already been answered and which still need discussion, within their authorized audience. Let the organizer mark the occurrence **resolved asynchronously**, **discussion needed**, or **held as usual**. When discussion is needed, use the open questions as the agenda. Record the outcome explicitly. A generated update or a missed calendar event alone cannot establish that a meeting was avoided.
@@ -93,6 +95,14 @@ Keep the query service and SQLite store in a per-user macOS process that can run
 2. Assemble each turn from the current task, selected preferences or decisions, and relevant excerpts from other permitted sources. Target up to roughly 200k tokens of task detail when the selected model allows it. Reserve space for tool results and the reply first. Summarize older turns with links to the originals when the budget is smaller.
 3. Start with full-text search and a short list of ranked excerpts. Keep a small set of questions with known answers, including paraphrases and a later decision that supersedes an earlier one. Use the missed questions to decide whether embeddings would improve recall.
 4. Attach citations to stable message IDs. Clicking one opens the passage locally after restart. Scope derived summaries to their sources. Removing a source must also remove its index entries and invalidate memories derived from it.
+
+### Working context for this week
+
+“What did I work on this week?” needs coverage across projects. Start with a compact inventory of the conversations with dated activity since Monday in the owner's time zone. A short support handoff should appear alongside a release chat with hundreds of turns. Drill into a conversation for excerpts and open a citation for the passage behind a decision. When only part of the week has been read, say which part. Use the passage timestamp for inclusion. Plain text without a reliable timestamp remains searchable outside the weekly view.
+
+Keep one canonical copy of the imported passage and an external-content full-text index. Use date-range indexes to locate weekly evidence, a byte budget for each evidence page, and a cursor for the next page. Old conversations remain available when a current question refers back to them. Storage capacity and the assistant's per-turn context window are separate budgets. [SQLite external-content indexes](https://www.sqlite.org/fts5.html#external_content_tables) · [SQLite index planning](https://www.sqlite.org/queryplanner.html#multi_column_indices)
+
+An unresolved blocker from last Friday can still matter on Monday. The next layer should track explicit, dated decisions and open commitments with links back to their evidence. Carry them forward until newer evidence resolves or supersedes them. Evaluate this on a week containing a reversal, an unresolved item from the previous week, and a quiet project. Add summaries or semantic retrieval when a measured recall gap justifies the extra storage and maintenance. An owner chooses the words that enter a teammate's standup.
 
 ## Milestones
 
