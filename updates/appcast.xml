@@ -3,11 +3,11 @@
   <channel>
     <title>Hereforth Updates</title>
     <item>
-      <title>Hereforth 0.2.3</title>
-      <sparkle:version>20005</sparkle:version>
-      <sparkle:shortVersionString>0.2.3</sparkle:shortVersionString>
+      <title>Hereforth 0.3.0</title>
+      <sparkle:version>30000</sparkle:version>
+      <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/moiiiiit/hereforth/releases/download/v0.2.3/Hereforth.dmg" sparkle:edSignature="0MdUGP/rO5j40fMStBvnBvBCbV32vXGHZD45vFxyNLcOkzYUKcE6xayvK+VdipH8QgygadSb+nr/3uv7/ndnDA==" length="3599874" type="application/x-apple-diskimage" />
+      <enclosure url="https://github.com/moiiiiit/hereforth/releases/download/v0.3.0/Hereforth.dmg" sparkle:edSignature="BCspc+MHpHeumUtYv9rmabOlr+/fc7MZPs4VPg+SeEL7ADLfmAC9owcAslMnRtzpzaQ7L7K/D26X3DDUdkMxCw==" length="3905441" type="application/x-apple-diskimage" />
     </item>
   </channel>
 </rss>
