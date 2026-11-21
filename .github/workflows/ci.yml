@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -26,6 +26,8 @@ jobs:
           python3 Tests/smoke-mcp.py "$helper"
           python3 Tests/peer-smoke.py "$helper"
           python3 Tests/twenty-peer-smoke.py "$helper"
+          python3 Tests/phone-actions-smoke.py "$helper"
+          python3 Tests/phone-http-smoke.py "$helper"
           python3 Tests/binary-runtime-smoke.py "$helper"
       - name: Verify first-install release signatures
         run: python3 Tests/bootstrap-smoke.py

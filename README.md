@@ -41,6 +41,10 @@ On the other side, Ryan can ask his Claude “What’s Mohit working on?” The 
 
 Once you’ve paired with your teammates, ask “Give me the team standup from Hereforth.” It can read the latest update each teammate has shared with you, for up to 20 people at a time. Ask for dates and whose update is missing. [Read a team standup](docs/teammate-knowledge.md#read-a-team-standup)
 
+## Use it from your phone
+
+When I’m away from my Mac, I can check what my published agents are working on, approve a request, and send Ryan a brief. The phone page runs on my Mac behind Tailscale. If I need to use the desktop myself, I can open my saved screen-sharing connection from the same page. [Set up Phone Access](docs/remote-control.md)
+
 ## Leaving your Mac at your desk
 
 I like being able to close the Hereforth window and still let someone read my standup. Click the **h** in the menu bar and choose **Keep Awake for 1 Hour**. In **Keep Awake**, you can set a different duration, let the display sleep, or turn on periodic pointer movement while the Mac is idle.

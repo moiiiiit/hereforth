@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 @main
 struct HereforthApp: App {
     @StateObject private var awake = KeepAwake()
+    @StateObject private var phoneListener = PhoneListenerProcess()
     @State private var selection: String? = "conversations"
 
     #if HEREFORTH_BINARY_UPDATER
@@ -14,7 +15,7 @@ struct HereforthApp: App {
 
     var body: some Scene {
         Window("Hereforth", id: "library") {
-            LibraryView(awake: awake, selection: $selection)
+            LibraryView(awake: awake, phoneListener: phoneListener, selection: $selection)
                 .frame(minWidth: 810, minHeight: 500)
         }
         .defaultSize(width: 1040, height: 660)
@@ -66,6 +67,7 @@ private struct LibraryCommands: Commands {
 
 private struct LibraryView: View {
     @ObservedObject var awake: KeepAwake
+    @ObservedObject var phoneListener: PhoneListenerProcess
     @Binding var selection: String?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
@@ -73,6 +75,7 @@ private struct LibraryView: View {
     @State private var briefs: [Brief] = []
     @State private var offers: [ContextOffer] = []
     @State private var requests: [WorkRequest] = []
+    @State private var ownerTasks: [OwnerTask] = []
     @State private var standupThreads: [StandupThread] = []
     @State private var standupPage: StandupPage = .week
     @State private var standupSelection: StandupThread.ID?
@@ -161,6 +164,9 @@ private struct LibraryView: View {
                         .tag("usage")
                     Label("Keep Awake", systemImage: "cup.and.saucer")
                         .tag("power")
+                    queueRow("Phone Access", icon: "iphone",
+                             count: ownerTasks.lazy.filter { $0.state == "pending_review" }.count)
+                        .tag("phone")
                 }
             }
             .listStyle(.sidebar)
@@ -173,6 +179,8 @@ private struct LibraryView: View {
                     UsageView()
                 } else if selection == "power" {
                     KeepAwakeView(awake: awake)
+                } else if selection == "phone" {
+                    PhoneAccessView(tasks: ownerTasks, listener: phoneListener, review: reviewOwnerTask)
                 } else if selection == "requests" {
                     WorkRequests(
                         requests: requests,
@@ -266,6 +274,9 @@ private struct LibraryView: View {
                 }
                 if let updated = try? store?.standupThreads() {
                     standupThreads = updated
+                }
+                if let updated = try? store?.ownerTasks() {
+                    ownerTasks = updated
                 }
             }
         }
@@ -468,7 +479,7 @@ private struct LibraryView: View {
     private func validateSelection() {
         if selection == "handoffs", let latest = briefs.first {
             selection = "brief:" + latest.id
-        } else if !["handoffs", "inbox", "requests", "standup", "usage", "power"].contains(selection ?? ""), selectedBrief == nil {
+        } else if !["handoffs", "inbox", "requests", "standup", "usage", "power", "phone"].contains(selection ?? ""), selectedBrief == nil {
             selection = "conversations"
         }
     }
@@ -481,17 +492,25 @@ private struct LibraryView: View {
             let incoming = try store.contextInbox()
             let incomingWork = try store.workRequests()
             let updatedThreads = try store.standupThreads()
+            let updatedTasks = try store.ownerTasks()
             self.store = store
             chats = updatedChats
             briefs = updatedBriefs
             offers = incoming
             requests = incomingWork
             standupThreads = updatedThreads
+            ownerTasks = updatedTasks
             if !visibleChats.contains(where: { $0.id == selectedChat }) { selectedChat = nil }
             validateSelection()
         } catch {
             problem = "The local library couldn’t be loaded. \(error.localizedDescription)"
         }
+    }
+
+    private func reviewOwnerTask(_ id: String, _ approve: Bool) throws {
+        let store = try self.store ?? Store()
+        defer { if let updated = try? store.ownerTasks() { ownerTasks = updated } }
+        _ = try store.reviewOwnerTask(id: id, approve: approve)
     }
 
     private func reviewContext(_ id: String, approve: Bool) {

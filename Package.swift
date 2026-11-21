@@ -17,10 +17,13 @@ let package = Package(
         .executable(name: "hereforth", targets: ["hereforth"]),
         .executable(name: "HereforthApp", targets: ["HereforthApp"])
     ],
+    dependencies: [.package(url: "https://github.com/brokenhandsio/swift-webauthn.git", exact: "1.0.0-beta.4")],
     targets: [
         .systemLibrary(name: "CSQLite"),
-        .target(name: "HereforthCore", dependencies: ["CSQLite"], resources: [.copy("Resources/Humanizer")]),
-        .executableTarget(name: "hereforth", dependencies: ["HereforthCore"]),
+        .target(name: "HereforthCore", dependencies: ["CSQLite"], resources: [
+            .copy("Resources/Humanizer"), .copy("Resources/PhoneWeb"), .copy("Resources/PasskeyLicenses.txt")
+        ]),
+        .executableTarget(name: "hereforth", dependencies: ["HereforthCore", .product(name: "WebAuthn", package: "swift-webauthn")]),
         .executableTarget(name: "HereforthApp", dependencies: appDependencies,
                           swiftSettings: binaryUpdater ? [.define("HEREFORTH_BINARY_UPDATER")] : [],
                           linkerSettings: binaryUpdater ? [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])] : []),

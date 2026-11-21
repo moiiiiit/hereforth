@@ -7,6 +7,7 @@ private typealias Object = [String: Any]
 final class MCPServer {
     let store: Store
     private var published: [String: String] = [:]
+    private var activityKeys = Set<String>()
 
     init(store: Store) { self.store = store }
 
@@ -21,6 +22,11 @@ final class MCPServer {
         "read_passage", "prepare_handoff", "get_handoffs"
     ]
     private static let tools = [
+        tool("get_assistant_activity", "List active Hereforth-published assistant sessions with local provenance and owner task-intent status. An active lease indicates routing availability. Tasks are queued for local owner review, and provider execution status is unavailable.",
+             properties: [:], required: [], readOnly: true),
+        tool("update_session_activity", "Only after the owner opts in to progress updates with report_activity at publication, report a brief private task summary and your self-reported phase for this published conversation. Keep transcripts and private data out of the summary. Uses this conversation’s receiver key. Peers still see only the public session label.",
+             properties: ["receiver_key": string, "summary": string, "phase": ["type": "string", "enum": ["queued", "running", "waiting", "completed"]]],
+             required: ["receiver_key", "summary", "phase"], readOnly: false),
         tool("read_usage", "Read local usage recorded by supported assistant clients for today, this week, or this month. Defaults to this week in the owner’s local time zone. Use source coverage to qualify totals. This view contains recorded client usage, independent of Hereforth routing.",
              properties: ["period": ["type": "string", "enum": ["today", "week", "month"], "default": "week"]], required: [], readOnly: true),
         tool("get_keep_awake_status", "Read whether the local Hereforth app is running and its published Keep Awake and pointer status. This tool only reads status. Change controls in the Hereforth app.",
@@ -32,7 +38,7 @@ final class MCPServer {
         tool("get_writing_guide", "Get the default Humanizer rules for Hereforth writing and private owner voice notes as style data. Apply in embedded mode before composing prose. If the native Humanizer skill is unavailable, request include_full_skill once for the bundled offline skill.",
              properties: ["include_full_skill": ["type": "boolean", "default": false]], required: [], readOnly: true),
         tool("publish_current_session", "Only on explicit owner request, publish a routing ID and label for this conversation. Keep its receiver key private to this conversation.",
-             properties: ["label": string], required: ["label"], readOnly: false),
+             properties: ["label": string, "report_activity": ["type": "boolean", "default": false]], required: ["label"], readOnly: false),
         tool("unpublish_current_session", "Close this conversation's published session using its private receiver key.",
              properties: ["receiver_key": string], required: ["receiver_key"], readOnly: false),
         tool("list_peer_sessions", "List currently published routing IDs and labels at a configured peer.",
@@ -107,6 +113,7 @@ final class MCPServer {
             for id in published.values { try? store.closeSession(id: id) }
         }
         var version: String?
+        var clientName = ""
         while let line = readLine() {
             var response: Object = ["jsonrpc": "2.0", "id": NSNull()]
             do {
@@ -136,6 +143,7 @@ final class MCPServer {
                     }
                     let negotiated = Self.versions.contains(requested) ? requested : Self.versions[0]
                     version = negotiated
+                    clientName = (params["clientInfo"] as? Object)?["name"] as? String ?? ""
                     result = [
                         "protocolVersion": negotiated,
                         "capabilities": ["tools": ["listChanged": false]],
@@ -148,7 +156,7 @@ final class MCPServer {
                         guard params["cursor"] == nil else { throw RPCError(-32602, "Invalid cursor") }
                         result = ["tools": Self.tools]
                     } else {
-                        result = try call(params, version: version)
+                        result = try call(params, version: version, clientName: clientName)
                     }
                 default:
                     throw RPCError(-32601, "Method not found")
@@ -163,7 +171,7 @@ final class MCPServer {
         }
     }
 
-    private func call(_ params: Object, version: String) throws -> Object {
+    private func call(_ params: Object, version: String, clientName: String) throws -> Object {
         guard let name = params["name"] as? String,
               let tool = Self.tools.first(where: { $0["name"] as? String == name }),
               let schema = tool["inputSchema"] as? Object,
@@ -184,6 +192,15 @@ final class MCPServer {
 
         do {
             switch name {
+            case "get_assistant_activity":
+                return try content(PhoneActions(store: store).activity(), version: version)
+            case "update_session_activity":
+                let key = try requiredString("receiver_key")
+                guard let id = published[key], activityKeys.contains(key) else {
+                    throw HereforthError("Publish with the owner’s permission to report activity before sending a progress update.")
+                }
+                try store.updateSessionActivity(sessionID: id, summary: requiredString("summary"), phase: requiredString("phase"))
+                return try content(["updated": true, "provenance": "assistant_reported"], version: version)
             case "read_usage":
                 let rawPeriod = try arguments["period"].map { _ in try requiredString("period") } ?? "week"
                 guard let period = UsagePeriod(rawValue: rawPeriod) else {
@@ -255,10 +272,15 @@ final class MCPServer {
                 return try content(guide, version: version)
             case "publish_current_session":
                 let label = try requiredString("label")
+                let rawActivity = arguments["report_activity"] ?? false
+                guard isBoolean(rawActivity), let reportActivity = rawActivity as? Bool else {
+                    throw RPCError(-32602, "Expected a boolean report_activity.")
+                }
                 let id = UUID().uuidString.lowercased()
                 let key = UUID().uuidString + UUID().uuidString
-                try store.publishSession(id: id, label: label, pid: getpid())
+                try store.publishSession(id: id, label: label, pid: getpid(), client: clientName)
                 published[key] = id
+                if reportActivity { activityKeys.insert(key) }
                 return try content([
                     "session_id": id, "receiver_key": key,
                     "instructions": "Keep the receiver key private to this conversation. Share only the routing ID with the peer. The registration expires after 30 minutes without an authorized read."
@@ -269,6 +291,7 @@ final class MCPServer {
                 if name == "unpublish_current_session" {
                     try store.closeSession(id: id)
                     published.removeValue(forKey: key)
+                    activityKeys.remove(key)
                     return try content(["closed": true], version: version)
                 }
                 let rawWait = arguments["wait_seconds"] ?? 0

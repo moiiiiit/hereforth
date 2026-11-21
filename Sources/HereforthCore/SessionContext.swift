@@ -7,6 +7,11 @@ public struct SharedSession: Codable, Identifiable, Sendable {
     public let label: String
 }
 
+public struct AssistantSessionActivity: Codable, Identifiable, Sendable {
+    public let id, label, client, publishedAt, lastSeenAt, expiresAt, state, provenance: String
+    public let summary, phase, activityAt: String
+}
+
 public struct ContextOffer: Codable, Identifiable, Sendable {
     public let id: String
     public let sender: String
@@ -21,12 +26,19 @@ extension Store {
         try db.execute("""
             CREATE TABLE IF NOT EXISTS shared_sessions (
                 id TEXT PRIMARY KEY, label TEXT NOT NULL, pid INTEGER NOT NULL, process_start TEXT NOT NULL,
-                ended INTEGER NOT NULL DEFAULT 0, lease_until INTEGER NOT NULL DEFAULT 0
+                ended INTEGER NOT NULL DEFAULT 0, lease_until INTEGER NOT NULL DEFAULT 0,
+                client TEXT NOT NULL DEFAULT '', published_at INTEGER, last_seen INTEGER,
+                summary TEXT NOT NULL DEFAULT '', phase TEXT NOT NULL DEFAULT '', activity_at INTEGER
             )
             """)
         let sessionColumns = try db.query("PRAGMA table_info(shared_sessions)") { Database.string($0, 1) }
         if !sessionColumns.contains("lease_until") {
             try db.execute("ALTER TABLE shared_sessions ADD COLUMN lease_until INTEGER NOT NULL DEFAULT 0")
+        }
+        for (name, definition) in [("client", "TEXT NOT NULL DEFAULT ''"), ("published_at", "INTEGER"), ("last_seen", "INTEGER"),
+                                   ("summary", "TEXT NOT NULL DEFAULT ''"), ("phase", "TEXT NOT NULL DEFAULT ''"), ("activity_at", "INTEGER")]
+        where !sessionColumns.contains(name) {
+            try db.execute("ALTER TABLE shared_sessions ADD COLUMN \(name) \(definition)")
         }
         try db.execute("""
             CREATE TABLE IF NOT EXISTS context_offers (
@@ -39,18 +51,21 @@ extension Store {
         try db.execute("CREATE INDEX IF NOT EXISTS context_offers_delivery ON context_offers(session_id, state)")
     }
 
-    public func publishSession(id: String, label: String, pid: Int32) throws {
+    public func publishSession(id: String, label: String, pid: Int32, client: String = "") throws {
         let id = try sessionKey(id)
         guard accepts(label, limit: 160, multiline: false), let started = processStart(pid) else {
             throw HereforthError("Use a short session label and a running local process.")
         }
         let published = try db.query("""
-            INSERT INTO shared_sessions (id, label, pid, process_start, lease_until)
-            VALUES (?, ?, ?, ?, unixepoch() + 1800)
-            ON CONFLICT(id) DO UPDATE SET label = excluded.label, lease_until = excluded.lease_until
+            INSERT INTO shared_sessions (id, label, pid, process_start, lease_until, client, published_at, last_seen)
+            VALUES (?, ?, ?, ?, unixepoch() + 1800, ?, unixepoch(), unixepoch())
+            ON CONFLICT(id) DO UPDATE SET label = excluded.label, lease_until = excluded.lease_until,
+              client = excluded.client, published_at = COALESCE(shared_sessions.published_at, unixepoch()), last_seen = unixepoch()
             WHERE ended = 0 AND lease_until > unixepoch()
               AND pid = excluded.pid AND process_start = excluded.process_start RETURNING id
-            """, [id, label, String(pid), started]) { Database.string($0, 0) }
+            """, [id, label, String(pid), started, accepts(client, limit: 120, multiline: false) ? client : ""]) {
+            Database.string($0, 0)
+        }
         guard !published.isEmpty else { throw HereforthError("This session can no longer be published.") }
     }
 
@@ -64,6 +79,41 @@ extension Store {
             try expireOffers()
             return try liveSessions().map(\.session)
         }
+    }
+
+    public func assistantSessions() throws -> [AssistantSessionActivity] {
+        try db.transaction {
+            _ = try liveSessions()
+            return try db.query("""
+                SELECT id, label, client, strftime('%Y-%m-%dT%H:%M:%SZ', published_at, 'unixepoch'),
+                       strftime('%Y-%m-%dT%H:%M:%SZ', last_seen, 'unixepoch'),
+                       strftime('%Y-%m-%dT%H:%M:%SZ', lease_until, 'unixepoch'),
+                       summary, phase, strftime('%Y-%m-%dT%H:%M:%SZ', activity_at, 'unixepoch')
+                FROM shared_sessions WHERE ended = 0 ORDER BY rowid DESC LIMIT 200
+                """) {
+                AssistantSessionActivity(id: Database.string($0, 0), label: Database.string($0, 1), client: Database.string($0, 2),
+                                         publishedAt: Database.string($0, 3), lastSeenAt: Database.string($0, 4),
+                                         expiresAt: Database.string($0, 5), state: "published", provenance: "local_mcp_publication",
+                                         summary: Database.string($0, 6), phase: Database.string($0, 7), activityAt: Database.string($0, 8))
+            }
+        }
+    }
+
+    public func updateSessionActivity(sessionID: String, summary: String, phase: String) throws {
+        let id = try sessionKey(sessionID)
+        guard ["queued", "running", "waiting", "completed"].contains(phase),
+              accepts(summary, limit: 480, multiline: false) else {
+            throw HereforthError("Use a short one-line activity summary and a reported phase.")
+        }
+        let saved = try db.transaction {
+            guard try liveSessions().contains(where: { $0.session.id == id && $0.pid == getpid() }) else { return false }
+            try db.execute("""
+                UPDATE shared_sessions SET summary = ?, phase = ?, activity_at = unixepoch(), last_seen = unixepoch(),
+                    lease_until = unixepoch() + 1800 WHERE id = ?
+                """, [summary, phase, id])
+            return true
+        }
+        guard saved else { throw HereforthError("This local session is unavailable.") }
     }
 
     public func offerContext(sender: String, sessionID: String, body: String, requestID: String) throws -> String {
@@ -138,7 +188,7 @@ extension Store {
                 return []
             }
             try db.execute("""
-                UPDATE shared_sessions SET lease_until = unixepoch() + 1800
+                UPDATE shared_sessions SET lease_until = unixepoch() + 1800, last_seen = unixepoch()
                 WHERE id = ? AND lease_until < unixepoch() + 1740
                 """, [sessionID])
             let offers = try db.query("""

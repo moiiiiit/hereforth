@@ -16,6 +16,9 @@ Usage:
   hereforth peer add PEER URL  (reads invitation token from stdin)
   hereforth peer remove PEER
   hereforth peer list [QUERY]
+  hereforth phone configure HTTPS_ORIGIN TAILSCALE_LOGIN [PORT]
+  hereforth phone serve|pair|status
+  hereforth phone revoke|revoke-passkey ID|all
 """
 
 func writeError(_ text: String) {
@@ -44,6 +47,8 @@ do {
         try MCPServer(store: Store()).run()
     case "peer":
         try PeerSettings.command(Array(arguments.dropFirst()))
+    case "phone":
+        try PhoneCommand.run(Array(arguments.dropFirst()))
     case "connect":
         try ConnectorSetup.command(Array(arguments.dropFirst()))
     case "update" where arguments.count == 2:

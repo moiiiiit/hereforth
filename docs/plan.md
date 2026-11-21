@@ -122,7 +122,7 @@ An unresolved blocker from last Friday can still matter on Monday. The next laye
 
 The Mac app supports timed Keep Awake and on-demand usage reports from local Claude Code, Codex, and Kimi Code logs. Add task-linked Keep Awake and phone controls to the owner remote pilot in milestone 3. Add scheduled team availability, reviewed update reuse, and per-project usage reporting for the asynchronous check-in pilot in milestone 4. [Keep Awake and usage controls](availability-and-usage.md)
 
-For milestone 3, the [remote control design](remote-control.md) specifies owner pairing, scoped task approvals, manual desktop handoff, and a two-device pilot over cellular.
+The phone view now pairs an owner passkey over Tailscale Serve, shows published assistant activity, reviews requests, and hands an existing brief to a named peer session. The phone can open a provider’s Remote interface or a saved screen-sharing connection. Task execution and interactive input stay in those clients. A physical iPhone test over cellular is still pending. [Phone Access](remote-control.md)
 
 - **Provider round trip.** Test registration for the local prototype with an eligible account, one streamed response, cancellation, expiry, and reconnect. An API key entered by the owner is the fallback when plan access is unavailable. Store Hereforth credentials in Keychain.
 - **Import accuracy.** Build small fixtures for branching, edited messages, repeated imports, missing attachments, and deletion. A citation should still resolve after a title changes. Record whether an old answer used an earlier version of a message.

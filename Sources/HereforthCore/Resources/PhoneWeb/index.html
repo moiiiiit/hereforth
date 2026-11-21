@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Hereforth on your phone</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="header">
+    <div class="brand"><span class="mark" aria-hidden="true">h</span><strong>Hereforth</strong></div>
+    <button id="sign-out" class="quiet" type="button" hidden>Sign Out</button>
+  </header>
+  <main>
+    <p id="notice" role="status" class="notice" hidden></p>
+    <section id="sign-in" class="panel sign-in" hidden>
+      <h1>Open your Mac</h1>
+      <p>Sign in with your passkey to see your Hereforth activity and requests.</p>
+      <button id="login" class="primary" type="button">Sign In with Passkey</button>
+      <details id="pairing">
+        <summary>Pair this phone</summary>
+        <form id="pair-form">
+          <p>Generate a one-time code from Phone Access on your Mac, then enter it here.</p>
+          <label>Pairing code <input name="code" required autocomplete="one-time-code" autocapitalize="off" spellcheck="false"></label>
+          <button class="primary" type="submit">Create Passkey</button>
+        </form>
+      </details>
+    </section>
+    <section id="owner" hidden>
+      <nav aria-label="Hereforth" class="tabs">
+        <button type="button" data-view="activity" aria-current="page">Activity</button>
+        <button type="button" data-view="task">New Task</button>
+        <button type="button" data-view="inbox">Inbox</button>
+        <button type="button" data-view="handoff">Handoff</button>
+      </nav>
+      <section id="activity" class="page">
+        <div class="heading"><h1>On your Mac</h1><button id="refresh" type="button" class="quiet">Refresh</button></div>
+        <h2>Published sessions</h2>
+        <div id="sessions"></div>
+        <h2>Task requests</h2>
+        <div id="tasks"></div>
+        <section id="desktop" class="panel">
+          <h2>Open Desktop</h2>
+          <p>On your Mac, enable Apple Screen Sharing and choose <strong>Only these users</strong>. In Screens on your phone, save the Mac using the hostname below.</p>
+          <code id="desktop-host" class="exact"></code>
+          <div class="actions">
+            <a class="button" id="open-desktop">Open in Screens</a>
+            <button type="button" id="copy-host">Copy Hostname</button>
+          </div>
+          <a href="https://help.edovia.com/en/screens-5/features/url-schemes" rel="noreferrer">Screens setup reference</a>
+        </section>
+      </section>
+      <section id="task" class="page" hidden>
+        <h1>New task</h1>
+        <form id="task-form" class="panel">
+          <label>Assistant
+            <select name="client">
+              <option value="codex">Codex</option>
+              <option value="claude">Claude Code</option>
+            </select>
+          </label>
+          <label>Task type
+            <select name="kind">
+              <option value="text">Text task</option>
+              <option value="computer">Computer use</option>
+            </select>
+          </label>
+          <label>Exact prompt
+            <textarea name="prompt" required maxlength="12000" rows="5"></textarea>
+          </label>
+          <p class="muted">Queue the prompt for review on your Mac, or copy it into a new remote session in your assistant.</p>
+          <button type="submit" class="primary">Queue for Mac Review</button>
+        </form>
+        <section id="remote" class="panel">
+          <h2 id="remote-title">Continue in ChatGPT Remote</h2>
+          <p id="remote-steps"></p>
+          <div class="actions">
+            <button id="copy-task" type="button">Copy Task</button>
+            <a id="open-remote" class="button" rel="noreferrer">Open ChatGPT</a>
+          </div>
+          <p class="muted">Start the task and approve actions in your assistant. Hereforth records the queue request separately.</p>
+          <a id="remote-help" rel="noreferrer">Remote setup instructions</a>
+        </section>
+      </section>
+      <section id="inbox" class="page" hidden>
+        <div class="heading"><h1>Inbox</h1><button id="refresh-inbox" type="button" class="quiet">Refresh</button></div>
+        <div id="inbox-items"></div>
+      </section>
+      <section id="handoff" class="page" hidden>
+        <h1>Send a handoff</h1>
+        <form id="handoff-form" class="panel">
+          <label>Local brief <select name="brief" required></select></label>
+          <label>Paired teammate <select name="peer" required></select></label>
+          <label>Published session <select name="session" required></select></label>
+          <div class="actions">
+            <button class="primary" type="submit">Preview Handoff</button>
+            <button id="new-preview" type="button" hidden>Start New Preview</button>
+          </div>
+        </form>
+        <div id="handoff-review"></div>
+      </section>
+    </section>
+    <noscript>This page needs JavaScript to sign in and contact your Mac.</noscript>
+  </main>
+</body>
+</html>

@@ -54,7 +54,7 @@ For a first check, ask your assistant “Which conversations have I imported? Us
 
 ## Build from signed source
 
-Building from signed source requires Apple's Command Line Tools. If those tools are missing, run `xcode-select --install` and complete the Mac's installation prompt.
+Building from signed source requires Apple’s Swift 6.3 or later toolchain. Check with `swift --version`. If those tools are missing, run `xcode-select --install` and complete the Mac's installation prompt.
 
 ```sh
 curl --fail --show-error --location --proto '=https' --proto-redir '=https' \
