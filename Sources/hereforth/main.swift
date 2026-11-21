@@ -15,6 +15,7 @@ Usage:
   hereforth peer revoke SENDER
   hereforth peer add PEER URL  (reads invitation token from stdin)
   hereforth peer remove PEER
+  hereforth peer list [QUERY]
 """
 
 func writeError(_ text: String) {

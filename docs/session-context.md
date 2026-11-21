@@ -2,19 +2,27 @@
 
 Both people install Hereforth and connect their own assistant. Ryan publishes a session with a short label such as **Release review**. Mohit's assistant can then address a suggestion to that session. Ryan sees the sender and exact text in his Mac app and can allow or decline it. The receiving assistant collects approved context when it checks or while it is waiting for an offer. A sender cannot start a turn, see Ryan’s conversation, or operate his computer.
 
-## Pair two installations
+## Pair teammates
 
-These commands configure one direction, from Mohit to Ryan. On each Mac, set a shell variable for the installed helper:
+[Install Hereforth and connect your assistant](install.md) on each Mac. Open Terminal and set `hf` to the helper in the app you installed. This example uses the standard location for the disk image.
 
 ```sh
-hf="$HOME/Applications/Hereforth.app/Contents/MacOS/hereforth"
+hf="/Applications/Hereforth.app/Contents/MacOS/hereforth"
 ```
 
-1. On Ryan’s Mac, run `"$hf" peer serve` and leave the process running. It listens on `127.0.0.1:9124`. For two Macs, use a private HTTPS reverse proxy reachable by both, such as Tailscale Serve. For example, on an available tailnet HTTPS port, `tailscale serve --bg --https=9443 http://127.0.0.1:9124` prints the private address. Use your own tailnet access rules. [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve)
-2. In another terminal on Ryan’s Mac, run `"$hf" peer invite Mohit | pbcopy`. Give that credential and the private HTTPS address to Mohit through a trusted channel. Ryan’s installation uses the credential to associate incoming requests with the configured sender label.
-3. On Mohit’s Mac, copy the invitation credential and run `pbpaste | "$hf" peer add Ryan https://ryan-mac.example.ts.net:9443`, substituting Ryan’s actual origin. Keep the credential out of assistant chats. Pair in the reverse direction if Ryan also wants to initiate requests.
+If you installed to the Applications folder in your home folder, set `hf="$HOME/Applications/Hereforth.app/Contents/MacOS/hereforth"` instead. The signed-source installer uses this location.
 
-Ryan can revoke this sender with `"$hf" peer revoke Mohit`. Mohit can delete the saved destination with `"$hf" peer remove Ryan`. Stopping the listener stops remote queries. The pilot uses locally named peers and per-sender credentials. Enterprise identity, policy routing, and an always-running managed receiver are later work.
+This example lets Mohit initiate requests to Ryan.
+
+1. On Ryan’s Mac, start `"$hf" peer serve` and leave it running. It listens on `127.0.0.1:9124`. Set up one private HTTPS origin for this receiver. For example, `tailscale serve --bg --https=9443 http://127.0.0.1:9124` uses an available HTTPS port on Ryan’s tailnet. Apply your tailnet’s access rules to limit reachability to the team. [Tailscale Serve CLI](https://tailscale.com/docs/reference/tailscale-cli/serve)
+2. In a second Terminal window on Ryan’s Mac, set `hf` again and run `"$hf" peer invite Mohit | pbcopy`. Share the credential privately with Mohit along with Ryan’s HTTPS origin. Ryan’s copy uses the credential to identify Mohit, so issue a separate invitation for each sender and keep credentials out of assistant chats.
+3. On Mohit’s Mac, copy the credential and run `pbpaste | "$hf" peer add Ryan https://ryan-mac.example.ts.net:9443`, using Ryan’s actual origin. Choose distinct labels such as full names when two people share a first name. Use those labels when addressing teammates from your assistant.
+
+For a team standup, repeat this pairing from the organizer to each teammate whose update they need. Each receiving Mac uses one listener and one HTTPS origin for all authorized senders. Pair in the reverse direction if a teammate also needs to start their own requests. The receiving Mac must be reachable and the listener running for remote queries.
+
+Ask your assistant “Which teammates have I saved in Hereforth?” or run `"$hf" peer list`. Add a search term to filter the saved labels, for example `"$hf" peer list "Ryan"`. Use the displayed label if a name is ambiguous.
+
+Ryan can revoke Mohit’s credential with `"$hf" peer revoke Mohit`. Mohit can remove the saved destination with `"$hf" peer remove Ryan`. Running `peer invite` again with the same sender label replaces the credential. The new credential requires fresh approvals.
 
 ## Try it from two assistants
 

@@ -25,6 +25,7 @@ jobs:
           helper="$(swift build --show-bin-path)/hereforth"
           python3 Tests/smoke-mcp.py "$helper"
           python3 Tests/peer-smoke.py "$helper"
+          python3 Tests/twenty-peer-smoke.py "$helper"
           python3 Tests/binary-runtime-smoke.py "$helper"
       - name: Verify first-install release signatures
         run: python3 Tests/bootstrap-smoke.py

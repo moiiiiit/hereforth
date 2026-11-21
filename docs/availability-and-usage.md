@@ -1,8 +1,16 @@
 # Keeping the Mac available and tracking model usage
 
-Product and engineering proposal, November 20, 2026. A typical use case is to leave the Mac available during team hours so colleagues can get an update asynchronously. The owner should be able to tell why the Mac is awake, when it will sleep again, and how much model usage those updates consumed.
+## Using Hereforth on your Mac
 
-## Keep Awake
+Open the Hereforth menu bar item to start a timed keep-awake session, stop it, or open Usage. Choose 15 or 30 minutes, one or two hours, or until stopped. In the full window you can let the display sleep and choose whether the pointer should move every 30, 60, or 120 seconds while idle and unlocked. macOS may ask for Accessibility permission when you enable pointer movement.
+
+Usage reads the token counts that Claude Code and Codex write locally when you click **Load usage** or ask your connected assistant for a report. Choose today, this week, or this month for token totals by tool and model, including work you did outside Hereforth. If a Codex log includes a five-hour or weekly usage window, the report shows the percentage used when Codex recorded it and when the reading goes stale. Account-wide billing, spending limits and browser-only chats need different data sources. The menu bar design draws on Vorssaint’s quick access to power controls and agent usage. [Vorssaint](https://vorssaint.com/) · [How Vorssaint handles local usage data](https://github.com/vorssaint/vorssaint-utils/blob/main/docs/PRIVACY.md)
+
+## Planned extensions
+
+The longer-term use case is leaving the Mac available during team hours so colleagues can get an update asynchronously. The sections below describe proposals for schedules, task-linked availability, budgets and broader provider coverage.
+
+### Keep Awake
 
 Let the owner ask “Why is my Mac awake, and until when?” through the assistant connector. Use the same availability record for the optional menu-bar and phone controls. Show the active reason, expiry, power source, and whether the display may sleep. If several reasons overlap, list them individually. Closing the phone leaves an explicitly authorized task or availability window running on the Mac.
 
@@ -19,7 +27,7 @@ Use an in-process IOKit idle-system assertion with a human-readable reason. Hold
 
 KeepingYouAwake is an open-source precedent for menu-bar timers and battery cutoffs. Hereforth's reason to own this control is that it knows when a task finishes or an availability window ends. [KeepingYouAwake](https://github.com/newmarcel/KeepingYouAwake)
 
-## Model usage
+### Model usage
 
 Start metering with the first provider integration. Let the owner ask “How much Claude usage went into launch prep this week?” Return the relevant totals, units, coverage and time range in chat. A Usage view and per-task usage line can render the same records for today, week, billing period, or a custom date range. Filter by account, provider, model, project, task, and purpose such as personal chat, drafting a team update, or answering a teammate. Show input, output, cached tokens when reported, request count, and the number of calls with incomplete accounting. Display the active turn's estimated context size alongside the model's context limit in the task view. Repeated input across turns contributes repeatedly to usage.
 
@@ -40,7 +48,7 @@ Keep request IDs, timestamps, token classes, price version, billing mode, purpos
 
 ## Feasibility and acceptance
 
-On the development Mac, a short native program acquired a system-only IOKit assertion with a three-second release timeout and explicitly released it. The installed Codex app-server generated a schema containing thread token-usage events, rate-limit reads and rate-limit updates. These checks establish the API surface. Overnight behavior and live provider accounting need device and account tests.
+On the development Mac, starting Keep Awake in the window acquired a system sleep assertion. Codex could read its expiry over MCP, and stopping it released the assertion. A separate IOKit test exercised display mode, expiry and restarting. The Usage view and Codex returned 120 Claude Code tokens and 130 Codex tokens from the two synthetic sessions described below. Pointer motion with Accessibility granted, overnight availability and provider billing reconciliation still need device or account tests.
 
 1. Overlap a task and timer, cancel one, and verify the other still holds. Unplug across the charge floor, change the schedule across daylight saving time, stop all during a scheduled window, and restart after its end. Check that the display locks and sleeps independently.
 2. Feed a synthetic OpenAI receipt with 100 input tokens (40 cached) and 30 output tokens (10 reasoning). The total is 130. For a Claude receipt with 60 ordinary, 10 cache-write, 30 cache-read and 20 output tokens, the total is 120. Redelivering either receipt leaves totals unchanged.

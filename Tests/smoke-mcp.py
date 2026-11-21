@@ -63,7 +63,12 @@ def main(binary):
         owner = root / "owner"
         recipient = root / "recipient"
         recipient.mkdir()
-        env = {**os.environ, "HEREFORTH_HOME": str(owner)}
+        claude_profile = root / "claude-usage-fixture"
+        codex_profile = root / "codex-usage-fixture"
+        (claude_profile / "projects").mkdir(parents=True)
+        (codex_profile / "sessions").mkdir(parents=True)
+        env = {**os.environ, "HEREFORTH_HOME": str(owner), "CLAUDE_CONFIG_DIR": str(claude_profile),
+               "CODEX_HOME": str(codex_profile)}
         chatgpt = root / "chatgpt.json"
         claude = root / "claude.json"
         decision = "The Glacier pilot will switch to batched uploads on Tuesday."
@@ -117,7 +122,31 @@ def main(binary):
                 "submit_work_request", "get_work_request", "read_granted_brief", "list_work_requests",
                 "request_standup_access", "list_standup_threads", "read_standup_thread", "reply_to_standup", "read_weekly_context",
                 "get_writing_guide",
+                "list_peers", "team_standup",
+                "read_usage", "get_keep_awake_status",
             }
+            assert call("get_keep_awake_status")["structuredContent"] == {
+                "appRunning": False, "active": False, "pointerState": "off",
+            }
+            usage = call("read_usage", period="today")["structuredContent"]
+            assert usage["period"] == "today" and usage["rows"] == []
+            assert {source["provider"] for source in usage["sources"]} == {"Claude Code", "Codex"}
+            assert str(root) not in str(usage)
+            (claude_profile / "projects/synthetic-usage.jsonl").write_text(json.dumps({
+                "type": "assistant", "timestamp": datetime.now(timezone.utc).isoformat(),
+                "message": {"id": "synthetic-usage", "model": "fixture-model", "stop_reason": "end_turn",
+                            "usage": {"input_tokens": 10, "output_tokens": 4}},
+                "private_field": "never include source contents in usage",
+            }) + "\n", encoding="utf-8")
+            usage = call("read_usage", period="today")["structuredContent"]
+            assert usage["rows"] == [{"provider": "Claude Code", "model": "fixture-model", "requestCount": 1,
+                                      "inputTokens": 10, "outputTokens": 4, "cacheReadTokens": 0,
+                                      "cacheWriteTokens": 0, "reasoningTokens": 0}]
+            assert "private_field" not in str(usage) and str(root) not in str(usage)
+            assert request("tools/call", {"name": "read_usage", "arguments": {"period": "all"}})["error"]["code"] == -32602
+            assert call("list_peers")["structuredContent"] == {"peers": []}
+            empty_team = call("team_standup")["structuredContent"]
+            assert empty_team["teammates"] == [] and "Pair a teammate" in empty_team["instructions"]
             descriptions = {tool["name"]: tool["description"] for tool in tools}
             for tool in ("prepare_handoff", "offer_session_context", "submit_work_request",
                          "request_standup_access", "reply_to_standup", "read_standup_thread", "read_weekly_context"):

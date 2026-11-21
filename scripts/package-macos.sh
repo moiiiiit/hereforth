@@ -278,7 +278,8 @@ else
 fi
 verify_app "$built"
 if ! $adhoc; then verify_notarized_app "$built"; fi
-/usr/bin/hdiutil create -volname "$volume_name" -fs HFS+ -format UDZO -srcfolder "$volume" "$dmg"
+/usr/bin/hdiutil create -volname "$volume_name" -fs HFS+ -format UDRW -srcfolder "$volume" "$stage/volume.dmg"
+/usr/bin/hdiutil convert "$stage/volume.dmg" -format UDZO -o "$dmg"
 if [[ -n "$identity" ]]; then
     /usr/bin/codesign --sign "$identity" --timestamp "$dmg"
 fi

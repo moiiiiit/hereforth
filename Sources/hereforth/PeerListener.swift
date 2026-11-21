@@ -103,6 +103,12 @@ final class PeerListener {
             case ("GET", "/v1/sessions") where request.length == 0:
                 let sessions = Array(try store.publishedSessions().prefix(50))
                 send(connection, status: 200, body: try JSONEncoder().encode(sessions))
+            case ("GET", "/v1/standup-latest") where request.length == 0:
+                let latest = try store.latestPeerStandup(sender: sender).map { pair in
+                    PeerLatestStandup(thread_id: pair.thread.id, expires_at: pair.thread.expiresAt, author: pair.update.author,
+                                      body: pair.update.body, created_at: pair.update.createdAt, sequence: pair.update.sequence)
+                }
+                send(connection, status: 200, body: try JSONEncoder().encode(latest))
             case ("POST", "/v1/offers"):
                 guard request.headers["content-type"] == "application/json",
                       let offer = try? JSONDecoder().decode(PeerOffer.self, from: body),

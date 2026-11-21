@@ -242,6 +242,18 @@ def check_standup(binary, owner, sender, receiver, send):
         assert set(threads[0]) == {"id", "sender", "state", "expires_at", "work_request_id", "latest_sequence"}
         assert reopen("read_standup_thread", **arguments, after=2)["structuredContent"]["messages"] == [answer]
 
+    bulk = "x" * 1998 + "🌲"
+    with server(binary, receiver) as (_, _, initialize, receive):
+        initialize("2025-11-25")
+        receive("reply_to_standup", thread_id=thread_id, body=bulk, request_id=str(uuid.uuid4()))
+    batch = send("team_standup", peers=["mORGAN", "Morgan other sender"])["structuredContent"]["teammates"]
+    assert batch[0]["peer"] == "Morgan" and batch[0]["state"] == "shared"
+    assert batch[0]["update"]["body"] == "x" * 1998 and batch[0]["update"]["truncated"]
+    assert batch[0]["update"]["thread_id"] == thread_id and batch[0]["update"]["sequence"] == 4
+    assert batch[1] == {"peer": "Morgan other sender", "state": "not_shared"}
+    assert send("team_standup", peers=["Morgan", "mORGAN"])["isError"]
+    assert send("read_standup_thread", **arguments, after=3)["structuredContent"]["messages"][0]["body"] == bulk
+
     command(owner, receiver, "revoke", submitted["id"])
     assert send("read_standup_thread", **arguments)["structuredContent"] == {"available": False}
     assert send("reply_to_standup", **peer_reply)["isError"]
@@ -270,12 +282,20 @@ def main(binary):
             command(binary, sender, "peer", "add", "Morgan", origin, input=token)
             command(binary, sender, "peer", "add", "Morgan wrong token", origin, input=b"0" * 64 + b"\n")
             command(binary, sender, "peer", "add", "Morgan other sender", origin, input=other_token)
+            names = command(binary, sender, "peer", "list", "mOrgan").decode().splitlines()
+            assert names == ["Morgan", "Morgan other sender", "Morgan wrong token"]
             assert (root / "sender" / "peer-settings.json").stat().st_mode & 0o077 == 0
             assert (root / "receiver" / "peer-settings.json").stat().st_mode & 0o077 == 0
 
             with server(binary, sender) as (_, _, init_sender, send):
                 init_sender("2025-11-25")
                 assert send("list_peer_sessions", peer="Morgan")["structuredContent"]["sessions"] == []
+                assert send("list_peer_sessions", peer="mORGAN")["structuredContent"]["sessions"] == []
+                assert send("list_peers", query="OTHER", offset=0)["structuredContent"] == {"peers": [{"name": "Morgan other sender"}]}
+                command(binary, sender, "peer", "add", "morgan", origin, input=b"0" * 64 + b"\n")
+                assert send("list_peer_sessions", peer="MORGAN")["isError"]
+                assert send("list_peer_sessions", peer="Morgan")["structuredContent"]["sessions"] == []
+                command(binary, sender, "peer", "remove", "morgan")
                 assert send("list_peer_sessions", peer="Morgan wrong token")["isError"]
 
                 with server(binary, receiver) as (_, request, init_receiver, receive):

@@ -38,8 +38,17 @@ struct PeerStandupReply: Codable {
     let body: String
 }
 
+struct PeerLatestStandup: Codable, Sendable {
+    let thread_id: String
+    let expires_at: String
+    let author: String
+    let body: String
+    let created_at: String
+    let sequence: Int
+}
+
 struct PeerSettings: Codable {
-    struct Peer: Codable {
+    struct Peer: Codable, Sendable {
         let url: URL
         let token: String
     }
@@ -111,6 +120,9 @@ struct PeerSettings: Codable {
 
     static func command(_ arguments: [String]) throws {
         switch arguments.first {
+        case "list" where (1...2).contains(arguments.count):
+            let query = arguments.count == 2 ? arguments[1] : nil
+            for name in try load().names(matching: query) { print(name) }
         case "serve" where (1...2).contains(arguments.count):
             let portText = arguments.count == 2 ? arguments[1] : "9124"
             guard let port = UInt16(portText), port > 0 else { throw HereforthError("Enter a valid TCP port.") }
@@ -138,7 +150,7 @@ struct PeerSettings: Codable {
             guard let token = readLine(), validToken(token) else { throw HereforthError("Enter the invitation token through standard input.") }
             try update { $0.peers[name] = Peer(url: url, token: token) }
         default:
-            throw HereforthError("Use peer serve [PORT], peer invite SENDER, peer revoke SENDER, peer add PEER URL, or peer remove PEER.")
+            throw HereforthError("Use peer list [QUERY], peer serve [PORT], peer invite SENDER, peer revoke SENDER, peer add PEER URL, or peer remove PEER.")
         }
     }
 
@@ -150,11 +162,38 @@ struct PeerSettings: Codable {
         return name
     }
 
+    func names(matching query: String? = nil) -> [String] {
+        let filter = Self.fold(query?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
+        return peers.keys.filter { filter.isEmpty || Self.fold($0).contains(filter) }.sorted {
+            let lhs = Self.fold($0), rhs = Self.fold($1)
+            return lhs == rhs ? $0 < $1 : lhs < rhs
+        }
+    }
+
+    func resolve(_ peer: String) throws -> String {
+        if peers[peer] != nil { return peer }
+        let normalized = Self.fold(peer.trimmingCharacters(in: .whitespacesAndNewlines))
+        let names = peers.keys.filter { Self.fold($0) == normalized }
+        if names.count > 1 { throw HereforthError("More than one peer matches. Use the exact name from the paired peer list.") }
+        guard let name = names.first else { throw HereforthError("This peer has not been configured. Check the paired peer list.") }
+        return name
+    }
+
+    private static func fold(_ name: String) -> String {
+        name.folding(options: .caseInsensitive, locale: Locale(identifier: "en_US_POSIX"))
+    }
+
     static func request(peer: String, path: String, payload: Data? = nil) throws -> Data {
-        guard let target = try load().peers[peer] else { throw HereforthError("This peer has not been configured.") }
+        let settings = try load()
+        let name = try settings.resolve(peer)
+        guard let target = settings.peers[name] else { throw HereforthError("This peer has not been configured.") }
+        return try request(target: target, path: path, payload: payload)
+    }
+
+    static func request(target: Peer, path: String, payload: Data? = nil, timeout: TimeInterval = 10) throws -> Data {
         guard validToken(target.token) else { throw HereforthError("The configured peer token is invalid.") }
         let origin = try endpoint(target.url.absoluteString)
-        var request = URLRequest(url: origin.appendingPathComponent(path), timeoutInterval: 8)
+        var request = URLRequest(url: origin.appendingPathComponent(path), timeoutInterval: min(timeout, 8))
         request.setValue("Bearer " + target.token, forHTTPHeaderField: "Authorization")
         if let payload {
             request.httpMethod = "POST"
@@ -170,7 +209,7 @@ struct PeerSettings: Codable {
         let session = URLSession(configuration: configuration, delegate: result, delegateQueue: nil)
         defer { session.invalidateAndCancel() }
         session.dataTask(with: request).resume()
-        guard result.ready.wait(timeout: .now() + 10) == .success else { throw HereforthError("The peer request timed out.") }
+        guard result.ready.wait(timeout: .now() + timeout) == .success else { throw HereforthError("The peer request timed out.") }
         if result.tooLarge { throw HereforthError("The peer response exceeded the size limit.") }
         if result.failed { throw HereforthError("Could not complete the peer request.") }
         guard let status = result.status else { throw HereforthError("Could not reach the peer service.") }

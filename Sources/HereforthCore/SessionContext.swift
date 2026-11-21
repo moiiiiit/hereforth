@@ -187,7 +187,7 @@ extension Store {
         return active
     }
 
-    private func processStart(_ pid: Int32) -> String? {
+    func processStart(_ pid: Int32) -> String? {
         guard pid > 0 else { return nil }
         var process = proc_bsdinfo()
         let size = Int32(MemoryLayout<proc_bsdinfo>.size)

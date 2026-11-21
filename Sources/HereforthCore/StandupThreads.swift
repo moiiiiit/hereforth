@@ -75,6 +75,26 @@ extension Store {
                             [sender, String(offset)], row: standupThreadRow)
     }
 
+    public func latestPeerStandup(sender: String) throws -> (thread: StandupThread, update: StandupMessage)? {
+        try db.transaction(write: false) {
+            let match = try db.query("""
+                SELECT \(Self.standupMessageColumns), m.thread_id FROM standup_messages m
+                WHERE m.author = 'owner' AND m.thread_id IN (
+                    SELECT t.id FROM standup_threads t JOIN work_requests w ON w.id = t.work_id
+                    WHERE w.sender = ? AND \(Self.activeStandup)
+                )
+                ORDER BY m.created DESC, m.rowid DESC LIMIT 1
+                """, [sender]) { row in
+                (id: Database.string(row, 5), update: standupMessageRow(row))
+            }.first
+            guard let match,
+                  let thread = try standupThread(whereSQL: "t.id = ? AND " + Self.activeStandup, values: [match.id]) else {
+                return nil
+            }
+            return (thread, match.update)
+        }
+    }
+
     public func standupMessages(threadID: String, after: Int = 0) throws -> [StandupMessage] {
         let id = try standupUUID(threadID)
         return try db.transaction(write: false) {

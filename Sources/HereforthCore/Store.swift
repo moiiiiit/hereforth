@@ -41,6 +41,7 @@ public final class Store {
             try installSessionContextTables()
             try installWorkRequestsTable()
             try installVoiceNotesTable()
+            try installKeepAwakeStatusTable()
             try db.execute("""
                 CREATE TABLE IF NOT EXISTS chats (
                     id TEXT PRIMARY KEY, provider TEXT NOT NULL, title TEXT NOT NULL, count INTEGER NOT NULL,

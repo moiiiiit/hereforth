@@ -28,7 +28,7 @@ For your own work, import the conversation JSON from a Claude or ChatGPT export.
 
 ## Hand the decision to a teammate
 
-Both of you install Hereforth and pair your Macs over a private network, such as Tailscale. The receiving Mac needs to be reachable. What you send depends on whether Ryan is already working on it. [Pair two Macs](docs/session-context.md)
+Each teammate installs Hereforth and pairs with the people they need to reach over a private network, such as Tailscale. The receiving Mac needs to be reachable. What you send depends on whether Ryan is already working on it. [Pair with teammates](docs/session-context.md#pair-teammates)
 
 - **Ryan already has a chat open.** He asks his assistant to publish a session called *Release review*. In your own assistant, say “Send Ryan’s Release review session the Friday decision and why it changed.” Ryan sees the exact text in his Inbox. Once he approves it, his assistant can pick it up. You can ask yours whether it arrived.
 - **You need something from Ryan.** Ask “Can I get seven days of read-only access to Ryan’s Juniper brief?” It goes in his **Work Requests** even if all his chats are closed. He chooses the brief, reviews the version you’ll see, and approves. Hereforth grants access to that copy and records the result. IT, security, and vendor requests can go through the same queue. Granting access in an external system still needs an integration with that system. [Work requests](docs/workplace-requests.md)
@@ -38,6 +38,14 @@ Both of you install Hereforth and pair your Macs over a private network, such as
 Ask your assistant “What did I work on this week, and what’s still open?” It can pull dated passages from your imported chats. You decide which of those details to put in a standup.
 
 On the other side, Ryan can ask his Claude “What’s Mohit working on?” The first time, he can request your standup. You review the request and write the opening update. Approval creates a Hereforth thread just for the two of you. Ryan can read it from Codex tomorrow, ask what’s blocked, or leave a follow-up. His access lasts seven days, and you can revoke it earlier. Your original chats stay in your own library. [Standup walkthrough](docs/teammate-knowledge.md#ask-for-someones-standup)
+
+Once you’ve paired with your teammates, ask “Give me the team standup from Hereforth.” It can read the latest update each teammate has shared with you, for up to 20 people at a time. Ask for dates and whose update is missing. [Read a team standup](docs/teammate-knowledge.md#read-a-team-standup)
+
+## Leaving your Mac at your desk
+
+I like being able to close the Hereforth window and still let someone read my standup. Click the **h** in the menu bar and choose **Keep Awake for 1 Hour**. In **Keep Awake**, you can set a different duration, let the display sleep, or turn on periodic pointer movement while the Mac is idle.
+
+To see how much Claude Code and Codex ran on this Mac, open **Usage** and click **Load usage**, or ask your assistant “What was my model usage this week?” It reads the counts in your local logs when you ask. [Power and usage](docs/availability-and-usage.md)
 
 ## What stays on your Mac
 
@@ -59,15 +67,16 @@ I like being able to hand work from one person’s coding agent to another. Comi
 
 ## Development
 
-From a checkout, run `./scripts/install.sh` to build a local app. To exercise the library, MCP tools, and handoffs between two profiles, run these checks.
+From a checkout, run `./scripts/install.sh` to build a local app. To exercise the library, MCP tools, and handoffs with paired teammates, run these checks.
 
 ```sh
 swift test
 swift build
 python3 Tests/smoke-mcp.py .build/debug/hereforth
 python3 Tests/peer-smoke.py .build/debug/hereforth
+python3 Tests/twenty-peer-smoke.py .build/debug/hereforth
 ```
 
-The roadmap covers a team-wide standup, live agent activity, usage tracking, and keep-awake controls. [Implementation plan](docs/plan.md) · [Power and usage](docs/availability-and-usage.md) · [Integration research](docs/research.md) · [Remote access design](docs/remote-control.md)
+The roadmap covers live agent activity, team-hours schedules, and project-level usage reporting. [Implementation plan](docs/plan.md) · [Power and usage](docs/availability-and-usage.md) · [Integration research](docs/research.md) · [Remote access design](docs/remote-control.md)
 
 [UX guide](docs/ux.md) · [Contributor instructions](AGENTS.md) · [Release process](docs/releases.md) · [MIT license](LICENSE)

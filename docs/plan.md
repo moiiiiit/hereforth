@@ -63,6 +63,10 @@ To test the section, start two tasks, put one into a waiting state, disconnect t
 
 ## Team standup
 
+The current `team_standup` tool reads the latest owner-written update shared with the caller by each of up to 20 paired teammates. It also accepts an explicit list of names. An unavailable Mac and a reachable Mac with no active share get distinct results. A shared entry includes the time and thread for follow-up. The next step is comparing reports across time. [Current walkthrough](teammate-knowledge.md)
+
+### Planned reporting periods
+
 “Give me the team standup” returns one short entry per teammate, directly in the caller's Claude. Use their current team, or ask which team if the choice is ambiguous. Include what changed since the previous team standup, what is underway now, and any blocker or request for help. On the first standup use the last working day and show the date range. Keep ongoing blockers visible even if they predate that range. A reader can follow up with “Only blockers” or “What does Priya need from me?”
 
 Example with fictional updates:
@@ -71,7 +75,7 @@ Example with fictional updates:
 - **Priya** reviewed the mobile build and is fixing the sign-in issue. Updated 9:05 am.
 - **Alex** has no shared update for this period.
 
-Expose one read-only MCP tool, `team_standup`, that takes a team and optional start time. Resolve membership from the team roster visible to the caller. Request each member’s shared updates with the caller’s identity, then group the results by person. Keep the source and observation time for each item so Claude can answer follow-ups. Reading the list leaves the team's reporting period unchanged. Use the last published standup as the shared baseline.
+Extend the read-only `team_standup` tool with saved teams and an optional start time. Resolve membership from the team roster visible to the caller. Request each member’s shared updates with the caller’s identity, then group the results by person. Keep the source and observation time for each item so Claude can answer follow-ups. Reading the list leaves the team's reporting period unchanged. Use the last published standup as the shared baseline.
 
 Return the available entries when a member's Mac is offline, with a coverage note for that member. Distinguish “couldn't check” from “no shared update.” Reuse previously published entries only while the caller's grant can be verified. Teammates can read at different times without generating another model summary on every owner's Mac.
 
@@ -116,7 +120,7 @@ An unresolved blocker from last Friday can still matter on Monday. The next laye
 
 ## First implementation decisions to test
 
-Instrument model usage in milestone 1. Add task-linked and timed Keep Awake to the owner remote pilot in milestone 3. Add scheduled team availability, reviewed update reuse, and per-project usage reporting for the asynchronous check-in pilot in milestone 4. [Keep Awake and usage controls](availability-and-usage.md)
+The Mac app supports timed Keep Awake and on-demand usage reports from local Claude Code and Codex logs. Add task-linked Keep Awake and phone controls to the owner remote pilot in milestone 3. Add scheduled team availability, reviewed update reuse, and per-project usage reporting for the asynchronous check-in pilot in milestone 4. [Keep Awake and usage controls](availability-and-usage.md)
 
 For milestone 3, the [remote control design](remote-control.md) specifies owner pairing, scoped task approvals, manual desktop handoff, and a two-device pilot over cellular.
 

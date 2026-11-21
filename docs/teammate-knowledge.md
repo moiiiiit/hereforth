@@ -12,7 +12,13 @@ Both teammates connect Hereforth to the assistant they already use and [pair the
 | “Which template needs review first?” | If the approved messages answer the question, Mohit's assistant can cite the dated update. Otherwise it can offer to post the question to the thread. Ryan can reply there from his own assistant or from Hereforth. A question stays open until someone answers it. |
 | Mohit opens Codex the next day and asks, “What did Ryan say about the docs review?” | Codex can find the same authorized thread at Ryan's Hereforth and read the exchange. Mohit doesn't need the original Claude chat or a saved thread ID. Expiry or revocation ends future peer reads and replies. Previously delivered text may still be in either assistant's history. |
 
-Each approved request creates its own conversation with that requester. Ryan can give another teammate a different update without disclosing Mohit's questions. A combined team standup is a planned read across each caller's grants. It should show whose latest update is stale or whose Mac could not be reached. Publishing a session to receive [a context suggestion](session-context.md) remains a separate, deliberate action.
+Each approved request creates its own conversation with that requester. Ryan can give another teammate a different update while keeping Mohit’s questions in their own thread. Publishing a session to receive [a context suggestion](session-context.md) remains a separate, deliberate action.
+
+## Read a team standup
+
+After [pairing with your teammates](session-context.md#pair-teammates), ask “Give me the team standup from Hereforth. Include the date of each update and say whose update you couldn’t read.” You can also name a group, such as “Give me the standup from Ryan Pate and Priya Rao.” A rollup reads up to 20 saved teammates at a time. If you have more, name the group you need.
+
+Hereforth reads the latest update each teammate wrote in a standup thread they approved for you. It reports when a reachable teammate has no active thread you can read and when a teammate is unavailable. Ask separately to request access. Updates are returned to your connected assistant, and each teammate’s private library and other standup threads remain on their Mac.
 
 ## Broader sharing design
 

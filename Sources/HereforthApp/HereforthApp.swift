@@ -5,13 +5,16 @@ import UniformTypeIdentifiers
 
 @main
 struct HereforthApp: App {
+    @StateObject private var awake = KeepAwake()
+    @State private var selection: String? = "conversations"
+
     #if HEREFORTH_BINARY_UPDATER
     @StateObject private var binaryUpdates = BinaryUpdater()
     #endif
 
     var body: some Scene {
         Window("Hereforth", id: "library") {
-            LibraryView()
+            LibraryView(awake: awake, selection: $selection)
                 .frame(minWidth: 810, minHeight: 500)
         }
         .defaultSize(width: 1040, height: 660)
@@ -27,6 +30,10 @@ struct HereforthApp: App {
             ConnectAssistantsView()
         }
         .windowResizability(.contentSize)
+
+        MenuBarExtra("Hereforth", systemImage: awake.mode == nil ? "h.square" : "h.square.fill") {
+            HereforthMenu(awake: awake, selection: $selection)
+        }
 
         #if HEREFORTH_BINARY_UPDATER
         Settings { BinaryUpdateSettings(updates: binaryUpdates) }
@@ -58,6 +65,8 @@ private struct LibraryCommands: Commands {
 }
 
 private struct LibraryView: View {
+    @ObservedObject var awake: KeepAwake
+    @Binding var selection: String?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @State private var chats: [ChatInfo] = []
@@ -70,7 +79,6 @@ private struct LibraryView: View {
     @State private var openingUpdates: [String: String] = [:]
     @State private var standupReplies: [String: String] = [:]
     @State private var store: Store?
-    @State private var selection: String? = "conversations"
     @State private var selectedChat: ChatInfo.ID?
     @State private var chatToRemove: ChatInfo?
     @State private var edits: [String: String] = [:]
@@ -148,6 +156,12 @@ private struct LibraryView: View {
                         .tag("brief:" + brief.id)
                     }
                 }
+                Section("On This Mac") {
+                    Label("Usage", systemImage: "chart.bar.xaxis")
+                        .tag("usage")
+                    Label("Keep Awake", systemImage: "cup.and.saucer")
+                        .tag("power")
+                }
             }
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 205, ideal: 228)
@@ -155,6 +169,10 @@ private struct LibraryView: View {
             VStack(spacing: 0) {
                 if selection == "inbox" {
                     ContextInbox(offers: offers, onReview: reviewContext)
+                } else if selection == "usage" {
+                    UsageView()
+                } else if selection == "power" {
+                    KeepAwakeView(awake: awake)
                 } else if selection == "requests" {
                     WorkRequests(
                         requests: requests,
@@ -450,7 +468,7 @@ private struct LibraryView: View {
     private func validateSelection() {
         if selection == "handoffs", let latest = briefs.first {
             selection = "brief:" + latest.id
-        } else if !["handoffs", "inbox", "requests", "standup"].contains(selection ?? ""), selectedBrief == nil {
+        } else if !["handoffs", "inbox", "requests", "standup", "usage", "power"].contains(selection ?? ""), selectedBrief == nil {
             selection = "conversations"
         }
     }
