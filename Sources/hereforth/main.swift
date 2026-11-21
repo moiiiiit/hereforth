@@ -8,6 +8,7 @@ Usage:
   hereforth voice show
   hereforth voice set  (reads UTF-8 writing notes from stdin)
   hereforth voice clear
+  hereforth update status|check|install|enable|disable
   hereforth peer serve [PORT]
   hereforth peer invite SENDER
   hereforth peer revoke SENDER
@@ -41,6 +42,8 @@ do {
         try MCPServer(store: Store()).run()
     case "peer":
         try PeerSettings.command(Array(arguments.dropFirst()))
+    case "update" where arguments.count == 2:
+        try UpdateLifecycle.command(arguments[1])
     case "voice" where arguments.count == 2:
         switch arguments[1] {
         case "show":

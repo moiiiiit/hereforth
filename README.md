@@ -1,25 +1,44 @@
-<img src="Assets/Hereforth.png" width="88" height="88" alt="Hereforth app icon">
+<img src="Assets/Hereforth.png" width="88" height="88" alt="Hereforth macOS app icon">
 
 # Hereforth
 
-Hereforth is a free, MIT-licensed personal assistant for macOS. Ask your own Claude or Codex what you decided across chats this week, or ask a teammate what they're working on. Each person's Mac holds their private library. Teammates can share a standup thread, send context to a named session, or leave a work request for later. The connected assistant supplies the model.
+Hereforth is an open-source, local-first AI assistant for macOS. Import your ChatGPT and Claude conversations, then ask Claude Code, Claude Desktop, or Codex what you decided across chats. Hereforth runs a local Model Context Protocol (MCP) server and keeps the searchable library on your Mac. Your connected assistant supplies the model.
+
+Ask **“What did we decide about the launch?”** to get the dated passages. Ask **“What is Ryan working on?”** to read a standup he shared with you. You can follow up in the same Hereforth thread tomorrow, even if you switch assistants.
 
 ## Install
 
-From this checkout on a Mac running macOS 14 or later with the Apple Command Line Tools and Swift 5.9 or later, run:
+On macOS 14 or later, install the Apple Command Line Tools if needed with `xcode-select --install`. The installer verifies the signed release and builds the app for your Mac. To install Hereforth and connect Claude Code:
 
 ```sh
-./scripts/install.sh --claude-desktop --claude-code
+curl -fL --proto '=https' https://github.com/moiiiiit/hereforth/releases/latest/download/install.sh -o hereforth-install.sh
+/bin/bash hereforth-install.sh --claude-code
 open ~/Applications/Hereforth.app
 ```
 
-Use either connection flag on its own if you use just one client. Running the installer without flags installs the app and its local MCP helper. The installer builds from source for your Mac and installs into your own Applications folder. Fully quit and reopen Claude Desktop when convenient, or start a fresh Claude Code session. On a managed Mac, your organization's installation and local connector settings apply. [Claude Desktop local connectors](https://modelcontextprotocol.io/quickstart/user) · [Claude Code MCP](https://code.claude.com/docs/en/mcp)
+Choose `--claude-code`, `--claude-desktop`, or `--codex` for the assistants you use. You can combine the flags or omit them to install just the app and helper. Open a new assistant chat after connecting. For Claude Desktop, fully quit and reopen the app. On managed Macs, your organization's installation and local connector settings apply. [Installation and signature verification](docs/install.md) · [Read the installer](scripts/bootstrap.sh) · [Release notes](https://github.com/moiiiiit/hereforth/releases/latest)
+
+Release installs check daily for signed updates. To check now or turn automatic updates off:
+
+```sh
+helper="$HOME/Applications/Hereforth.app/Contents/MacOS/hereforth"
+"$helper" update check
+"$helper" update disable
+```
+
+Use `update install` to apply an available update, `update enable` to resume daily updates, or `update status` to see the setting.
 
 To connect an installed Codex CLI to the same local helper, run this once and start a fresh Codex session:
 
 ```sh
 codex mcp add hereforth -- "$HOME/Applications/Hereforth.app/Contents/MacOS/hereforth" mcp
 ```
+
+## An open-source Comity alternative for agent handoffs
+
+Comity supports passing work between coding agents. Its *Ask my agent* feature can use a read-only copy of a teammate's recent agent session to answer questions. Hereforth takes a different approach to the same handoff. The recipient approves an opening update for a new standup thread. Both people can ask and answer there from their own assistants. The original sessions stay private. [Comity handoffs](https://comity.so/docs/collaboration/handoffs) · [Comity Ask my agent](https://comity.so/docs/collaboration/ask-my-agent)
+
+Hereforth fits a Mac team that wants cross-chat memory, async standups, and direct peer connections without a Hereforth account or team subscription. Both teammates install the app, pair their Macs, and use a private network such as Tailscale. Each person can revoke a grant. Searching a private library works with the app window closed. A peer's Mac must be reachable for shared reads and requests. [How sharing works](docs/teammate-knowledge.md) · [Product comparison and scope](docs/product-assessment.md)
 
 ## Try a decision and a handoff
 
@@ -62,6 +81,8 @@ helper="$HOME/Applications/Hereforth.app/Contents/MacOS/hereforth"
 ```
 
 ## Development
+
+For a local build from a repository checkout, run `./scripts/install.sh`. To run the tests:
 
 ```sh
 swift test

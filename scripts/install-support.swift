@@ -6,6 +6,7 @@ private enum InstallationError: Error {
     case configInvalid
     case serverConflict
     case claudeFailed
+    case codexFailed
 }
 
 private func installBundle(from staging: String, at destination: String) throws {
@@ -85,11 +86,49 @@ private func register(client: String, path: String, helper: String, claude: Stri
     print("Registered Hereforth with \(client).")
 }
 
+private func registerCodex(cli: String, helper: String) throws {
+    func command(_ arguments: [String]) throws -> (Int32, Data) {
+        let process = Process()
+        let output = Pipe()
+        process.executableURL = URL(fileURLWithPath: cli)
+        process.arguments = ["mcp"] + arguments
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = output
+        process.standardError = output
+        try process.run()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return (process.terminationStatus, data)
+    }
+
+    let (status, data) = try command(["get", "hereforth", "--json"])
+    if status == 0 {
+        guard let entry = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let transport = entry["transport"] as? [String: Any],
+              transport["type"] as? String == "stdio",
+              transport["command"] as? String == helper,
+              transport["args"] as? [String] == ["mcp"]
+        else { throw InstallationError.serverConflict }
+        print("Hereforth is already registered with Codex.")
+        return
+    }
+    let missing = "No MCP server named 'hereforth' found."
+    guard String(decoding: data, as: UTF8.self).split(whereSeparator: \.isNewline).contains(where: {
+        $0 == missing || $0 == "Error: " + missing
+    }) else { throw InstallationError.codexFailed }
+    let (added, _) = try command(["add", "hereforth", "--", helper, "mcp"])
+    guard added == 0 else { throw InstallationError.codexFailed }
+    print("Registered Hereforth with Codex.")
+}
+
 let args = CommandLine.arguments
-let client = args[1] == "code" ? "Claude Code" : "Claude Desktop"
+guard args.count >= 4 else { exit(2) }
+let client = args[1] == "code" ? "Claude Code" : args[1] == "codex" ? "Codex" : "Claude Desktop"
 do {
     if args[1] == "bundle" {
         try installBundle(from: args[2], at: args[3])
+    } else if args[1] == "codex" {
+        try registerCodex(cli: args[2], helper: args[3])
     } else {
         try register(client: client, path: args[2], helper: args[3], claude: args.count == 5 ? args[4] : nil)
     }
@@ -102,6 +141,8 @@ do {
         message = "\(client) already has a different server named hereforth. Its configuration was left unchanged."
     case InstallationError.claudeFailed:
         message = "Claude Code could not register Hereforth. Check your Claude Code MCP settings."
+    case InstallationError.codexFailed:
+        message = "Codex could not register Hereforth. Check your Codex MCP settings."
     default:
         message = "Couldn’t update the \(client) configuration. Check that it contains valid JSON and is writable."
     }
