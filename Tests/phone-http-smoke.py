@@ -248,7 +248,10 @@ def main(binary):
         resources = contents / "Resources"
         resources.mkdir()
         resource_bundle = "Hereforth_HereforthCore.bundle"
-        shutil.copytree(binary.parent / resource_bundle, resources / resource_bundle, symlinks=True)
+        source_bundle = binary.parent.parent / "Resources" / resource_bundle
+        if not source_bundle.is_dir():
+            source_bundle = binary.parent / resource_bundle
+        shutil.copytree(source_bundle, resources / resource_bundle, symlinks=True)
         env["HEREFORTH_HOME"] = str(root / "relocated-profile")
         with listener(relocated, env) as request:
             for path in ("/", "/app.js", "/styles.css"):

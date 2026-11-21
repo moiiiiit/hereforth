@@ -124,7 +124,24 @@ def main(binary):
                 "get_writing_guide",
                 "list_peers", "team_standup",
                 "read_usage", "get_keep_awake_status",
+                "get_assistant_activity", "update_session_activity",
             }
+            metadata = {tool["name"]: tool for tool in tools}
+            assert metadata["get_assistant_activity"]["annotations"]["readOnlyHint"] is True
+            assert metadata["update_session_activity"]["annotations"]["readOnlyHint"] is False
+            activity = call("get_assistant_activity")["structuredContent"]
+            assert activity["sessions"] == [] and activity["tasks"] == []
+            publication = call("publish_current_session", label="Synthetic progress", report_activity=True)["structuredContent"]
+            progress = dict(receiver_key=publication["receiver_key"], summary="Checking the sample report.", phase="running")
+            assert call("update_session_activity", **progress)["structuredContent"]["updated"]
+            activity = call("get_assistant_activity")["structuredContent"]
+            session = activity["sessions"][0]
+            assert session["id"] == publication["session_id"] and session["state"] == "published"
+            assert session["summary"] == progress["summary"] and session["phase"] == progress["phase"] and session["activityAt"]
+            assert publication["receiver_key"] not in str(activity)
+            assert call("unpublish_current_session", receiver_key=publication["receiver_key"])["structuredContent"]["closed"]
+            assert call("update_session_activity", **progress)["isError"]
+            assert call("get_assistant_activity")["structuredContent"]["sessions"] == []
             assert call("get_keep_awake_status")["structuredContent"] == {
                 "appRunning": False, "active": False, "pointerState": "off",
             }
