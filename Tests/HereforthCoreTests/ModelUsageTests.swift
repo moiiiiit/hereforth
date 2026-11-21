@@ -138,6 +138,17 @@ final class ModelUsageTests: XCTestCase {
         }
     }
 
+    func testInvalidLogRootIsReportedSeparatelyFromMissingLogs() throws {
+        try withRoots { claude, codex in
+            try FileManager.default.createDirectory(at: claude, withIntermediateDirectories: true)
+            try Data().write(to: claude.appendingPathComponent("projects"))
+            let report = try UsageReader.read(period: .today, claudeRoot: claude, codexRoot: codex)
+            XCTAssertEqual(report.sources.map(\.state), ["unreadable", "missing"])
+            XCTAssertEqual(report.sources.first?.filesFailed, 1)
+            XCTAssertTrue(report.rows.isEmpty)
+        }
+    }
+
     private var utc: TimeZone { TimeZone(secondsFromGMT: 0)! }
 
     private func date(_ value: String) throws -> Date {
