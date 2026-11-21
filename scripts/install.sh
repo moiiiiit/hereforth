@@ -47,7 +47,7 @@ tag="$(git describe --tags --exact-match HEAD 2>/dev/null || true)"
 if [[ "$tag" =~ ^v((0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))$ ]]; then
     candidate_version="${BASH_REMATCH[1]}"
     if [[ -z "$(git status --porcelain --untracked-files=normal)" ]] &&
-        git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile="$release_signers" \
+        git -c gpg.format=ssh -c gpg.ssh.program=/usr/bin/ssh-keygen -c gpg.ssh.allowedSignersFile="$release_signers" \
             -c gpg.minTrustLevel=fully verify-tag "$tag" >/dev/null 2>&1; then
         release_version="$candidate_version"
     fi

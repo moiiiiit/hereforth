@@ -72,13 +72,19 @@ struct UpdateAgent {
 
     func preference() throws -> Bool? {
         do {
+            let values = try preferenceFile.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+            guard values.isRegularFile == true, values.isSymbolicLink == false else {
+                throw HereforthError("The automatic update preference is invalid.")
+            }
             let value = try String(contentsOf: preferenceFile, encoding: .utf8)
-            switch value.trimmingCharacters(in: .newlines) {
-            case "enabled": return true
-            case "disabled": return false
+            switch value {
+            case "enabled\n": return true
+            case "disabled\n": return false
             default: throw HereforthError("The automatic update preference is invalid.")
             }
         } catch CocoaError.fileReadNoSuchFile {
+            return nil
+        } catch CocoaError.fileNoSuchFile {
             return nil
         }
     }
