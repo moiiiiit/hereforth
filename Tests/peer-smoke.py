@@ -25,10 +25,11 @@ def command(binary, env, *arguments, input=None):
 
 
 @contextlib.contextmanager
-def listener(binary, env):
-    with socket.socket() as reservation:
-        reservation.bind(("127.0.0.1", 0))
-        port = reservation.getsockname()[1]
+def listener(binary, env, port=None):
+    if port is None:
+        with socket.socket() as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            port = reservation.getsockname()[1]
     with subprocess.Popen([binary, "peer", "serve", str(port)], stderr=subprocess.PIPE, env=env) as process:
         try:
             ready, _, _ = select.select([process.stderr], [], [], 5)
@@ -94,6 +95,8 @@ do {
         _ = try store.reviewWorkRequest(id: args[2], approve: true)
     case "approve-standup":
         print(try store.reviewStandupRequest(id: args[2], approvedText: args[3]).id)
+    case "approve-context":
+        try store.reviewContext(id: args[2], approve: true)
     case "decline":
         _ = try store.reviewWorkRequest(id: args[2], approve: false)
     case "revoke":

@@ -238,20 +238,27 @@ def main(binary):
             request("/api/actions/activity", {}, expected=401, cookie=second)
             request("/api/auth/login/start", {}, expected=401)
 
-        # Copy the packaged layout away from the build tree and resolve assets from its actual resource bundle.
-        contents = root / "Relocated Hereforth.app/Contents"
+        # Preserve a signed app's complete layout when relocating its installed helper.
+        relocated_app = root / "Relocated Hereforth.app"
+        contents = relocated_app / "Contents"
         relocated = contents / "MacOS/hereforth"
-        relocated.parent.mkdir(parents=True)
-        shutil.copy2(binary, relocated)
-        (contents / "Info.plist").write_bytes(plistlib.dumps({"CFBundleIdentifier": "com.hereforth.phone.fixture",
-                                                               "CFBundleExecutable": "hereforth", "CFBundlePackageType": "APPL"}))
-        resources = contents / "Resources"
-        resources.mkdir()
-        resource_bundle = "Hereforth_HereforthCore.bundle"
-        source_bundle = binary.parent.parent / "Resources" / resource_bundle
-        if not source_bundle.is_dir():
-            source_bundle = binary.parent / resource_bundle
-        shutil.copytree(source_bundle, resources / resource_bundle, symlinks=True)
+        source_contents = binary.parent.parent
+        source_app = source_contents.parent
+        if binary.parent.name == "MacOS" and source_contents.name == "Contents" and source_app.suffix == ".app":
+            subprocess.run(["/usr/bin/ditto", source_app, relocated_app], check=True, timeout=20)
+            verify = ["/usr/bin/codesign", "--verify", "--strict"]
+            if subprocess.run([*verify, source_app], capture_output=True, timeout=10).returncode == 0:
+                subprocess.run([*verify, relocated_app], check=True, timeout=10)
+        else:
+            relocated.parent.mkdir(parents=True)
+            shutil.copy2(binary, relocated)
+            (contents / "Info.plist").write_bytes(plistlib.dumps({"CFBundleIdentifier": "com.hereforth.phone.fixture",
+                                                                   "CFBundleExecutable": "hereforth", "CFBundlePackageType": "APPL"}))
+            resource_bundle = "Hereforth_HereforthCore.bundle"
+            source_bundle = binary.parent.parent / "Resources" / resource_bundle
+            if not source_bundle.is_dir():
+                source_bundle = binary.parent / resource_bundle
+            shutil.copytree(source_bundle, contents / "Resources" / resource_bundle, symlinks=True)
         env["HEREFORTH_HOME"] = str(root / "relocated-profile")
         with listener(relocated, env) as request:
             for path in ("/", "/app.js", "/styles.css"):

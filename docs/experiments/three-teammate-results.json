@@ -1,0 +1,141 @@
+{
+  "scenario": "Synthetic Juniper JNP-47",
+  "setting": "Three live model clients played synthetic roles against isolated Hereforth libraries and loopback services. Owner review and approvals were simulated with synthetic inputs.",
+  "parallel_overlap": {
+    "measure": "Lower bound from the last acknowledged running update to the first completion request, rounded down to milliseconds.",
+    "first_seconds": 7.305,
+    "second_seconds": 8.136
+  },
+  "role_results": [
+    {
+      "role": "Ryan",
+      "model": "gpt-6.2-sol",
+      "elapsed_seconds": 35.078,
+      "verified_fields": 6,
+      "verified_citations": 2,
+      "result": {
+        "findings": {
+          "rollout_id": "JNP-47",
+          "net_cents": 26000,
+          "billable_account_count": 3,
+          "included_record_ids": [
+            "A1",
+            "B2",
+            "E5",
+            "G7"
+          ],
+          "duplicate_rows_removed": 1,
+          "excluded": {
+            "C3": "reversed",
+            "D4": "pending",
+            "F6": "after_cutoff"
+          }
+        },
+        "citations": [
+          "hf:a56c1e952b1c322f04a98e0d221b10182d219cdf80f27d428dc0cf5eb2a36c2a",
+          "hf:2bb8ec00e47c8f0dd9dffa17cf0434a269ff8f9a66e5eb52187ecbffe5b62f21"
+        ],
+        "standup": "JNP-47 reconciles to $260.00 across 3 billable accounts. Four posted debits qualify through the inclusive 12:00 UTC cutoff, including one posted at noon. I removed one duplicate row and excluded one reversed, one pending, and one late debit. I recommend using this total for the pilot settlement."
+      }
+    },
+    {
+      "role": "Priya",
+      "model": "gpt-6.2-sol",
+      "elapsed_seconds": 26.647,
+      "verified_fields": 5,
+      "verified_citations": 3,
+      "result": {
+        "findings": {
+          "rollout_id": "JNP-47",
+          "max_error_percent": 1.0,
+          "max_p95_ms": 250,
+          "eligible_accounts": [
+            "Cedar",
+            "Elm"
+          ],
+          "hold": {
+            "Spruce": "latency",
+            "Birch": "error_rate",
+            "Ash": "outside_pilot"
+          }
+        },
+        "citations": [
+          "hf:ac5b09a9bbbfc653e503b868cead61b603fd6d88fa68ee870db26e6d08991041",
+          "hf:1026d54510e4111038f968ad574a04b08ae3c8ea68a6396753b7348667f6d892",
+          "hf:2bf6cceede510da76c78c4ff4d81e94a25e9b6086579f2ef8fa5e759f52b4dca"
+        ],
+        "standup": "Recommend JNP-47 rollout for Cedar and Elm. Elm qualifies at both inclusive limits of 1.0% errors and 250 ms p95. Hold Spruce for p95 latency at 280 ms and Birch for a 1.4% error rate. Ash is outside the approved pilot."
+      }
+    },
+    {
+      "role": "Sam",
+      "model": "gpt-6.2-sol",
+      "elapsed_seconds": 28.066,
+      "verified_fields": 8,
+      "verified_citations": 2,
+      "result": {
+        "findings": {
+          "rollout_id": "JNP-47",
+          "vendor": "Northbank Relay",
+          "passed_controls": [
+            "signed_dpa",
+            "named_incident_contact"
+          ],
+          "deletion_limit_days": 14,
+          "observed_deletion_days": 21,
+          "approved_subprocessor_evidence": false,
+          "blocked_controls": [
+            "deletion_window",
+            "subprocessor_approval"
+          ],
+          "recommendation": "hold"
+        },
+        "citations": [
+          "hf:49a7dde0828cb26a4c30942063090abb7f6e59a7712a08da32d724ea16d6bad3",
+          "hf:727dc5ffaaa6eff56aa588bb479ebeaf68425c4415d2f819f6295c47d6a1a8d4"
+        ],
+        "standup": "Recommend holding Northbank Relay’s vendor approval for JNP-47. The signed DPA and named incident contact are confirmed. The witnessed deletion test took 21 days against a 14-calendar-day limit, and the packet and register lack procurement approval for Ridge Compute. Reopen the internal vendor review once a witnessed retest confirms deletion within 14 calendar days and internal procurement documents its explicit approval of Ridge Compute."
+      }
+    }
+  ],
+  "observer": {
+    "model": "gpt-6.2-sol",
+    "elapsed_seconds": 16.746,
+    "answer": "**Cedar and Elm cleared the JNP-47 release checks and are eligible for rollout.** Priya recommended both accounts. Elm met the inclusive limits of 1.0% errors and 250 ms p95 latency. Spruce remains on hold at 280 ms p95, Birch remains on hold at a 1.4% error rate, and Ash is outside the approved pilot. The update establishes eligibility and records a rollout recommendation. Deployment remains unconfirmed. (Priya’s Hereforth standup, thread `129480CF-9F17-4FB3-9808-A6FE6DD33E1D`, 2026-11-21 22:09:33 UTC.)\n\n**Billing reconciled $260.00 across three billable accounts.** Ryan recommended using that amount for pilot settlement. Four posted debits qualified through the inclusive 12:00 UTC cutoff, including one posted at exactly noon. Ryan removed one duplicate row and excluded one reversed, one pending, and one late debit. The update gives the settlement amount and leaves the three account names unspecified. (Ryan’s Hereforth standup, thread `8DF99219-F823-40B4-BC7A-DF68A7A1F410`, 2026-11-21 22:09:33 UTC.)\n\n**Northbank Relay’s vendor approval remains on hold.** The signed DPA and named incident contact are confirmed. The witnessed deletion test took 21 days against a 14-calendar-day limit, and the packet and register lack explicit procurement approval for Ridge Compute. Internal vendor review can reopen once a witnessed retest confirms deletion within 14 calendar days and internal procurement documents its approval of Ridge Compute. Any deployment that requires Northbank Relay’s approval still depends on that review. (Sam’s Hereforth standup, thread `F945AC3D-1081-4AC6-93A9-78335E8FA691`, 2026-11-21 22:09:33 UTC.)"
+  },
+  "cross_team": {
+    "ryan_result": {
+      "eligible_cents": 23000,
+      "outside_cents": 3000,
+      "settled_total_cents": 26000,
+      "eligible_accounts": [
+        "Cedar",
+        "Elm"
+      ],
+      "outside_billable_accounts": [
+        "Spruce"
+      ],
+      "deployment_confirmed": false,
+      "citations": [
+        "hf:2bb8ec00e47c8f0dd9dffa17cf0434a269ff8f9a66e5eb52187ecbffe5b62f21",
+        "hf:a56c1e952b1c322f04a98e0d221b10182d219cdf80f27d428dc0cf5eb2a36c2a"
+      ],
+      "priya_provenance": {
+        "sender": "Priya",
+        "offer_id": "8d424962-0b10-46de-b7e7-0d9307f1cee9",
+        "redelivered": false
+      }
+    },
+    "offer_states": [
+      "pending",
+      "approved",
+      "delivered"
+    ],
+    "delivery_counts": [
+      1,
+      0
+    ],
+    "exact_text_verified": true,
+    "retry_reused_receipt": true
+  }
+}
