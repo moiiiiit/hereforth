@@ -69,22 +69,23 @@ final class UsageLogScan {
         }.map(\.url)
     }
 
-    func read(_ file: URL, shouldContinue: () -> Bool = { true }, record: (Object) -> Void) {
+    @discardableResult
+    func read(_ file: URL, shouldContinue: () -> Bool = { true }, record: (Object) -> Void) -> Bool {
         guard withinBudget else {
             limited = true
-            return
+            return false
         }
         let descriptor = open(file.path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
         guard descriptor >= 0 else {
             filesFailed += 1
-            return
+            return false
         }
         let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         defer { try? handle.close() }
         var metadata = stat()
         guard fstat(descriptor, &metadata) == 0, metadata.st_mode & S_IFMT == S_IFREG else {
             filesFailed += 1
-            return
+            return false
         }
 
         filesRead += 1
@@ -92,6 +93,7 @@ final class UsageLogScan {
         let exceedsFileLimit = metadata.st_size > fileLimit
         var line = Data()
         var oversized = false
+        var complete = true
         do {
             while fileRemaining > 0, withinBudget, shouldContinue() {
                 guard let chunk = try handle.read(upToCount: min(65_536, fileRemaining, remaining)), !chunk.isEmpty else { break }
@@ -107,12 +109,13 @@ final class UsageLogScan {
                             line.removeAll(keepingCapacity: false)
                             skippedRecords += 1
                             limited = true
+                            complete = false
                         } else {
                             line.append(contentsOf: chunk[cursor..<end])
                         }
                     }
                     if let newline {
-                        if !oversized { deliver(line, record: record) }
+                        if !oversized, !deliver(line, record: record) { complete = false }
                         line.removeAll(keepingCapacity: true)
                         oversized = false
                         cursor = newline + 1
@@ -124,26 +127,30 @@ final class UsageLogScan {
             if shouldContinue() {
                 if exceedsFileLimit || fileRemaining > 0 {
                     limited = true
+                    complete = false
                 } else if !oversized {
-                    deliver(line, record: record)
+                    if !deliver(line, record: record) { complete = false }
                 }
             }
         } catch {
             filesFailed += 1
+            return false
         }
+        return complete && shouldContinue()
     }
 
     private var withinBudget: Bool {
         remaining > 0 && ProcessInfo.processInfo.systemUptime < deadline && !Task<Never, Never>.isCancelled
     }
 
-    private func deliver(_ line: Data, record: (Object) -> Void) {
-        guard !line.isEmpty else { return }
+    private func deliver(_ line: Data, record: (Object) -> Void) -> Bool {
+        guard !line.isEmpty else { return true }
         guard let row = try? JSONSerialization.jsonObject(with: line) as? Object else {
             skippedRecords += 1
-            return
+            return false
         }
         record(row)
+        return true
     }
 
     func coverage(_ provider: String) -> UsageSourceCoverage {

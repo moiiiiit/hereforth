@@ -16,6 +16,10 @@ struct ConnectAssistantsView: View {
         case desktop = "claude-desktop"
         case claude = "claude-code"
         case codex
+        case kimi = "kimi-code"
+        case openCode
+        case lmStudio
+        case manual
 
         var id: String { rawValue }
 
@@ -24,7 +28,15 @@ struct ConnectAssistantsView: View {
             case .desktop: return "Claude Desktop"
             case .claude: return "Claude Code"
             case .codex: return "Codex"
+            case .kimi: return "Kimi Code"
+            case .openCode: return "OpenCode"
+            case .lmStudio: return "LM Studio"
+            case .manual: return "Other Local MCP Client"
             }
+        }
+
+        var usesManualSetup: Bool {
+            self == .openCode || self == .lmStudio || self == .manual
         }
     }
 
@@ -41,18 +53,25 @@ struct ConnectAssistantsView: View {
                 .foregroundStyle(.secondary)
 
             Picker("Assistant", selection: $assistant) {
-                ForEach(Assistant.allCases) { option in
-                    Text(option.name).tag(option)
+                Section("Connect") {
+                    ForEach(Assistant.allCases.filter { !$0.usesManualSetup }) { option in
+                        Text(option.name).tag(option)
+                    }
+                }
+                Section("Set Up Manually") {
+                    ForEach(Assistant.allCases.filter(\.usesManualSetup)) { option in
+                        Text(option.name).tag(option)
+                    }
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
             .disabled(connecting)
             .onChange(of: assistant) {
                 executable = nil
                 result = nil
             }
 
-            if assistant != .desktop {
+            if assistant == .claude || assistant == .codex {
                 HStack {
                     Button("Choose CLI executable…", action: chooseExecutable)
                         .buttonStyle(.link)
@@ -65,6 +84,10 @@ struct ConnectAssistantsView: View {
                 }
             }
 
+            if assistant.usesManualSetup {
+                manualSetup
+            }
+
             if let result {
                 Text(result.message)
                     .foregroundStyle(result.failed ? Color.red : Color.secondary)
@@ -75,13 +98,69 @@ struct ConnectAssistantsView: View {
             HStack {
                 if connecting { ProgressView().controlSize(.small).accessibilityLabel("Connecting") }
                 Spacer()
-                Button("Connect \(assistant.name)", action: connect)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(connecting)
+                if assistant.usesManualSetup {
+                    Button(assistant == .lmStudio ? "Copy JSON Configuration" : "Copy Command",
+                           action: copySetup)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(Self.helperExecutable == nil)
+                } else {
+                    Button("Connect \(assistant.name)", action: connect)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(connecting)
+                }
             }
         }
         .padding(23)
         .frame(width: 450, alignment: .leading)
+    }
+
+    private var manualSetup: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let helper = Self.helperExecutable {
+                switch assistant {
+                case .openCode:
+                    Text("Run the copied command in Terminal from the project where you use OpenCode.")
+                case .lmStudio:
+                    Text("In LM Studio’s Program panel, choose Install, then Edit mcp.json. Merge the hereforth entry into mcpServers.")
+                default:
+                    Text("Add a server named hereforth using local stdio transport.")
+                    LabeledContent("Executable") {
+                        Text(helper.path)
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                    }
+                    LabeledContent("Arguments") {
+                        Text("mcp")
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                    }
+                }
+            } else {
+                Text("Open the installed Hereforth app to get its helper path.")
+            }
+        }
+        .foregroundStyle(.secondary)
+    }
+
+    private func copySetup() {
+        guard let helper = Self.helperExecutable else { return }
+        let command = helper.path
+        let setup: String
+        if assistant == .manual || assistant == .openCode {
+            let launch = "'" + command.replacingOccurrences(of: "'", with: "'\\''") + "' mcp"
+            setup = assistant == .openCode ? "opencode mcp add hereforth -- " + launch : launch
+        } else {
+            let entry = ["mcpServers": ["hereforth": ["command": command, "args": ["mcp"]] as [String: Any]]]
+            guard let data = try? JSONSerialization.data(withJSONObject: entry,
+                                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+            else { return }
+            setup = String(decoding: data, as: UTF8.self)
+        }
+        let clipboard = NSPasteboard.general
+        clipboard.clearContents()
+        let copied = clipboard.setString(setup, forType: .string)
+        result = ConnectionResult(message: copied ? "Copied to the clipboard." : "Couldn’t copy to the clipboard.",
+                                  failed: !copied)
     }
 
     private func chooseExecutable() {
@@ -111,9 +190,14 @@ struct ConnectAssistantsView: View {
         let failed: Bool
     }
 
-    private nonisolated static func register(_ client: String, executable: String?) -> ConnectionResult {
+    private nonisolated static var helperExecutable: URL? {
         guard let helper = Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("hereforth"),
-              FileManager.default.isExecutableFile(atPath: helper.path) else {
+              FileManager.default.isExecutableFile(atPath: helper.path) else { return nil }
+        return helper
+    }
+
+    private nonisolated static func register(_ client: String, executable: String?) -> ConnectionResult {
+        guard let helper = helperExecutable else {
             return ConnectionResult(message: "Open the installed Hereforth app to connect an assistant.", failed: true)
         }
         let process = Process()

@@ -120,7 +120,7 @@ An unresolved blocker from last Friday can still matter on Monday. The next laye
 
 ## First implementation decisions to test
 
-The Mac app supports timed Keep Awake and on-demand usage reports from local Claude Code and Codex logs. Add task-linked Keep Awake and phone controls to the owner remote pilot in milestone 3. Add scheduled team availability, reviewed update reuse, and per-project usage reporting for the asynchronous check-in pilot in milestone 4. [Keep Awake and usage controls](availability-and-usage.md)
+The Mac app supports timed Keep Awake and on-demand usage reports from local Claude Code, Codex, and Kimi Code logs. Add task-linked Keep Awake and phone controls to the owner remote pilot in milestone 3. Add scheduled team availability, reviewed update reuse, and per-project usage reporting for the asynchronous check-in pilot in milestone 4. [Keep Awake and usage controls](availability-and-usage.md)
 
 For milestone 3, the [remote control design](remote-control.md) specifies owner pairing, scoped task approvals, manual desktop handoff, and a two-device pilot over cellular.
 

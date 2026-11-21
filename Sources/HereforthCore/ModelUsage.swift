@@ -53,7 +53,7 @@ public struct UsageReport: Codable, Sendable {
 
 public enum UsageReader {
     public static func read(period: UsagePeriod, now: Date = Date(), timeZone: TimeZone = .current,
-                            claudeRoot: URL? = nil, codexRoot: URL? = nil) throws -> UsageReport {
+                            claudeRoot: URL? = nil, codexRoot: URL? = nil, kimiRoot: URL? = nil) throws -> UsageReport {
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = timeZone
         guard now.timeIntervalSince1970.isFinite,
@@ -64,12 +64,15 @@ public enum UsageReader {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let claude = claudeRoot ?? configured(environment["CLAUDE_CONFIG_DIR"]) ?? home.appendingPathComponent(".claude")
         let codex = codexRoot ?? configured(environment["CODEX_HOME"]) ?? home.appendingPathComponent(".codex")
+        let kimi = kimiRoot ?? configured(environment["KIMI_CODE_HOME"]) ?? home.appendingPathComponent(".kimi-code")
         let dates = UsageDates()
         let claudeScan = UsageLogScan()
         let claudeRows = ClaudeUsage.read(root: claude, scan: claudeScan, dates: dates, start: start, end: now)
         let codexScan = UsageLogScan()
         let codexUsage = CodexUsage.read(root: codex, scan: codexScan, dates: dates, start: start, end: now)
-        let rows = claudeRows + codexUsage.rows
+        let kimiScan = UsageLogScan()
+        let kimiRows = KimiUsage.read(root: kimi, scan: kimiScan, start: start, end: now)
+        let rows = claudeRows + codexUsage.rows + kimiRows
         let totals = Dictionary(grouping: rows, by: \.provider).keys.sorted().map { provider in
             let group = rows.filter { $0.provider == provider }
             func sum(_ field: KeyPath<UsageBreakdown, Int64>) -> Int64 {
@@ -82,7 +85,7 @@ public enum UsageReader {
         }
         return UsageReport(period: period, start: dates.plain.string(from: start), end: dates.fractional.string(from: now),
                            timeZone: timeZone.identifier, rows: rows, providerTotals: totals,
-                           sources: [claudeScan.coverage("Claude Code"), codexScan.coverage("Codex")],
+                           sources: [claudeScan.coverage("Claude Code"), codexScan.coverage("Codex"), kimiScan.coverage("Kimi Code")],
                            codexRateWindows: codexUsage.windows)
     }
 
@@ -102,7 +105,7 @@ private struct UsageDates {
     }
 }
 
-private struct UsageTokens: Equatable {
+private struct UsageTokens: Hashable {
     var input: Int64 = 0
     var output: Int64 = 0
     var cacheRead: Int64 = 0
@@ -148,7 +151,7 @@ private struct UsageTokens: Equatable {
         return Self(input: fresh + read + write, output: output, cacheRead: read, cacheWrite: write)
     }
 
-    private static func token(_ value: Any?) -> Int64? {
+    static func token(_ value: Any?) -> Int64? {
         guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
               let tokens = Int64(number.stringValue), (0...1_000_000_000_000).contains(tokens) else { return nil }
         return tokens
@@ -334,5 +337,75 @@ private enum CodexUsage {
                                               stale: now >= resets || now.timeIntervalSince(observed) >= 900)
         }
         return windows.values.sorted { $0.windowMinutes < $1.windowMinutes }
+    }
+}
+
+private enum KimiUsage {
+    private struct Receipt: Hashable {
+        let epoch: Int64
+        let model, scope: String
+        let tokens: UsageTokens
+    }
+
+    static func read(root: URL, scan: UsageLogScan, start: Date, end: Date) -> [UsageBreakdown] {
+        var totals: [String: UsageTotals] = [:]
+        var agents = Set<[String]>()
+        let sessions = root.appendingPathComponent("sessions").resolvingSymlinksInPath()
+        for file in scan.files(in: [sessions]) {
+            let parts = Array(file.pathComponents.suffix(6))
+            guard parts.count == 6, parts[0] == sessions.lastPathComponent, parts[3] == "agents",
+                  parts[5] == "wire.jsonl", !agents.contains([parts[2], parts[4]]) else { continue }
+            // The session fork writer publishes state only after appending all fork markers.
+            let state = file.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("state.json")
+            guard let metadata = try? state.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
+                  metadata.isRegularFile == true, metadata.isSymbolicLink == false else {
+                scan.skippedRecords += 1
+                continue
+            }
+            var receipts = Set<Receipt>()
+            let complete = scan.read(file) { event in
+                switch event["type"] as? String {
+                case "forked":
+                    // The fork writer appends this marker after copying inherited records.
+                    receipts.removeAll()
+                case "usage.record":
+                    if let agent = event["agentId"] as? String, agent != parts[4] {
+                        scan.skippedRecords += 1
+                        return
+                    }
+                    guard let candidate = receipt(event, scan: scan) else { return }
+                    let date = Date(timeIntervalSince1970: Double(candidate.epoch) / 1_000)
+                    guard date >= start && date <= end else { return }
+                    if !receipts.insert(candidate).inserted { scan.skippedRecords += 1 }
+                default:
+                    break
+                }
+            }
+            // A scan that stopped early might not have reached a fork boundary.
+            guard complete else { continue }
+            agents.insert([parts[2], parts[4]])
+            for item in receipts {
+                totals[item.model, default: UsageTotals()].add(item.tokens)
+            }
+        }
+        return breakdown(totals, provider: "Kimi Code")
+    }
+
+    private static func receipt(_ event: Object, scan: UsageLogScan) -> Receipt? {
+        let scope = event["usageScope"] as? String ?? "session"
+        guard ["session", "turn", "prediction"].contains(scope),
+              let model = modelName(event["model"]),
+              let rawTime = event["time"] as? NSNumber, CFGetTypeID(rawTime) != CFBooleanGetTypeID(),
+              let epoch = Int64(rawTime.stringValue), (0...253_402_300_799_999).contains(epoch),
+              let usage = event["usage"] as? Object,
+              let fresh = UsageTokens.token(usage["inputOther"]), let output = UsageTokens.token(usage["output"]),
+              let read = UsageTokens.token(usage["inputCacheRead"]),
+              let write = UsageTokens.token(usage["inputCacheCreation"]) else {
+            scan.skippedRecords += 1
+            return nil
+        }
+        return Receipt(epoch: epoch, model: model, scope: scope,
+                       tokens: UsageTokens(input: fresh + read + write, output: output, cacheRead: read, cacheWrite: write))
     }
 }

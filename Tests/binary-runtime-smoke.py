@@ -110,4 +110,43 @@ fi
     conflict = run(fixture, "codex", installed, profile, cli, success=False, env=env)
     assert "different server named hereforth" in conflict.stderr and not arguments.exists()
 
+    kimi_profile = profile / ".kimi-code"
+    kimi_profile.mkdir()
+    kimi_config = kimi_profile / "mcp.json"
+    kimi_preferences = kimi_profile / "config.toml"
+    kimi_preferences.write_bytes(b'default_model = "fixture-only"\n')
+    default_kimi_env = {key: value for key, value in env.items() if key != "KIMI_CODE_HOME"}
+    run(fixture, "kimi-code", installed, profile, env=default_kimi_env)
+    assert json.loads(kimi_config.read_bytes()) == {"mcpServers": {"hereforth": {"command": installed, "args": ["mcp"]}}}
+    assert kimi_config.stat().st_mode & 0o077 == 0
+    assert kimi_preferences.read_bytes() == b'default_model = "fixture-only"\n'
+
+    isolated_kimi = root / "Kimi Profile"
+    isolated_kimi.mkdir()
+    modified_env = dict(env, KIMI_CODE_HOME=str(isolated_kimi))
+    config = isolated_kimi / "mcp.json"
+    remote = {"url": "https://example.invalid/mcp", "transport": "sse", "bearerTokenEnvVar": "FIXTURE_KEY"}
+    config.write_text(json.dumps({"mcpServers": {"existing": remote}, "otherSetting": 42}))
+    run(fixture, "kimi-code", installed, profile, env=modified_env)
+    saved = config.read_bytes()
+    document = json.loads(saved)
+    assert document == {"mcpServers": {"hereforth": {"command": installed, "args": ["mcp"]}, "existing": remote},
+                        "otherSetting": 42}
+    assert "already connected" in run(fixture, "kimi-code", installed, profile, env=modified_env).stdout
+    assert config.read_bytes() == saved
+    assert "different server" in run(fixture, "kimi-code", alternate, profile, success=False, env=modified_env).stderr
+    assert config.read_bytes() == saved
+    document["mcpServers"]["hereforth"]["environment_id"] = "different-machine"
+    config.write_text(json.dumps(document))
+    unsafe = config.read_bytes()
+    assert "different server" in run(fixture, "kimi-code", installed, profile, success=False, env=modified_env).stderr
+    assert config.read_bytes() == unsafe
+    config.write_bytes(b'{"mcpServers":')
+    assert "valid JSON" in run(fixture, "kimi-code", installed, profile, success=False, env=modified_env).stderr
+    assert config.read_bytes() == b'{"mcpServers":'
+    config.unlink()
+    config.symlink_to(kimi_config)
+    assert "regular file" in run(fixture, "kimi-code", installed, profile, success=False, env=modified_env).stderr
+    assert config.is_symlink()
+
 print("Binary runtime smoke passed: source updater bypass, connector paths, and preserved settings.")

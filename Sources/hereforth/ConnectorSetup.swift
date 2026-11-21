@@ -16,20 +16,22 @@ enum ConnectorSetup {
         case desktop = "claude-desktop"
         case claude = "claude-code"
         case codex
+        case kimi = "kimi-code"
 
         var name: String {
             switch self {
             case .desktop: return "Claude Desktop"
             case .claude: return "Claude Code"
             case .codex: return "Codex"
+            case .kimi: return "Kimi Code"
             }
         }
     }
 
     static func command(_ arguments: [String]) throws {
         guard let first = arguments.first, let client = Client(rawValue: first),
-              arguments.count == 1 || (arguments.count == 2 && client != .desktop) else {
-            throw ConnectorError.setup("Use hereforth connect claude-desktop, claude-code, or codex.")
+              arguments.count == 1 || (arguments.count == 2 && [.claude, .codex].contains(client)) else {
+            throw ConnectorError.setup("Use hereforth connect claude-desktop, claude-code, codex, or kimi-code.")
         }
         let home = FileManager.default.homeDirectoryForCurrentUser
         guard let executable = Bundle.main.executableURL?.resolvingSymlinksInPath() else {
@@ -70,19 +72,11 @@ enum ConnectorSetup {
                 throw ConnectorError.setup("Open Claude Desktop once to initialize its settings, then connect it here.")
             }
             let config = directory.appendingPathComponent("claude_desktop_config.json").resolvingSymlinksInPath()
-            try registerClaude(client, config: config, helper: helper) { settings, existing in
-                let data = try JSONSerialization.data(withJSONObject: settings,
-                                                       options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
-                guard try readConfig(config) == existing else {
-                    throw ConnectorError.setup("Claude Desktop’s configuration changed. Try connecting again.")
-                }
-                _ = umask(0o077)
-                try data.write(to: config, options: .atomic)
-            }
+            try registerJSONFile(client, config: config, helper: helper)
         case .claude:
             let directory = environment["CLAUDE_CONFIG_DIR"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) } ?? home
             let config = directory.appendingPathComponent(".claude.json")
-            try registerClaude(client, config: config, helper: helper) { _, _ in
+            try registerJSON(client, config: config.resolvingSymlinksInPath(), helper: helper) { _, _ in
                 let executable = try findExecutable("claude", client: client, selected: selectedExecutable, paths: paths)
                 let status = try run(executable, ["mcp", "add", "--scope", "user", "--transport", "stdio",
                                                   "hereforth", "--", helper, "mcp"], environment: environment)
@@ -109,12 +103,34 @@ enum ConnectorSetup {
             let (added, _) = try run(executable, ["mcp", "add", "hereforth", "--", helper, "mcp"], environment: environment)
             guard added == 0 else { throw ConnectorError.setup("Codex couldn’t register Hereforth. Check its MCP settings.") }
             print("Connected Hereforth to Codex.")
+        case .kimi:
+            let directory = environment["KIMI_CODE_HOME"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0, isDirectory: true) }
+                ?? home.appendingPathComponent(".kimi-code", isDirectory: true)
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+                throw ConnectorError.setup("Open the current Kimi Code once to initialize its profile, then connect it here.")
+            }
+            let config = directory.appendingPathComponent("mcp.json")
+            try registerJSONFile(client, config: config, helper: helper)
         }
     }
 
-    private static func registerClaude(_ client: Client, config: URL, helper: String,
-                                       write: ([String: Any], Data?) throws -> Void) throws {
-        let data = try readConfig(config.resolvingSymlinksInPath())
+    private static func registerJSONFile(_ client: Client, config: URL, helper: String) throws {
+        try registerJSON(client, config: config, helper: helper) { settings, existing in
+            let data = try JSONSerialization.data(withJSONObject: settings,
+                                                  options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+            guard try readConfig(config) == existing else {
+                throw ConnectorError.setup("\(client.name)’s configuration changed. Try connecting again.")
+            }
+            let oldMask = umask(0o077)
+            defer { _ = umask(oldMask) }
+            try data.write(to: config, options: .atomic)
+        }
+    }
+
+    private static func registerJSON(_ client: Client, config: URL, helper: String,
+                                     write: ([String: Any], Data?) throws -> Void) throws {
+        let data = try readConfig(config)
         var settings: [String: Any] = [:]
         if let data {
             guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
@@ -134,6 +150,12 @@ enum ConnectorSetup {
                   entry["args"] as? [String] == ["mcp"], entry["type"] == nil || entry["type"] as? String == "stdio",
                   entry["env"] == nil || (entry["env"] as? [String: Any])?.isEmpty == true
             else { throw conflict(client) }
+            if client == .kimi {
+                guard entry["transport"] == nil || entry["transport"] as? String == "stdio",
+                      entry["environment_id"] == nil || entry["environment_id"] as? String == "local",
+                      entry["enabled"] == nil || entry["enabled"] as? Bool == true,
+                      entry["url"] == nil else { throw conflict(client) }
+            }
             print("Hereforth is already connected to \(client.name).")
             return
         }

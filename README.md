@@ -4,7 +4,7 @@
 
 I want to ask Claude what we decided last week, even if we made the decision in ChatGPT. If Ryan is picking up the work, I want to send him the answer in Codex. Neither of us should have to dig up three chats or book a sync just to find out why the date moved.
 
-Hereforth is an open-source personal assistant for macOS. It keeps one searchable library of your imported chats on your Mac. Claude Desktop, Claude Code, and Codex can all ask that library questions through a local Model Context Protocol (MCP) server. You use the assistant you already pay for. Hereforth doesn’t need its own model account or API key.
+Hereforth is an open-source personal assistant for macOS. It keeps one searchable library of your imported chats on your Mac. Claude, Codex, and Kimi Code can ask that library questions through a local Model Context Protocol (MCP) server. If you run an open-weight model, you can connect a tool-capable client like OpenCode or LM Studio. Hereforth doesn’t need its own model account or API key. [Connect your assistant](docs/install.md)
 
 ## Install
 
@@ -45,7 +45,7 @@ Once you’ve paired with your teammates, ask “Give me the team standup from H
 
 I like being able to close the Hereforth window and still let someone read my standup. Click the **h** in the menu bar and choose **Keep Awake for 1 Hour**. In **Keep Awake**, you can set a different duration, let the display sleep, or turn on periodic pointer movement while the Mac is idle.
 
-To see how much Claude Code and Codex ran on this Mac, open **Usage** and click **Load usage**, or ask your assistant “What was my model usage this week?” It reads the counts in your local logs when you ask. [Power and usage](docs/availability-and-usage.md)
+To see how much Claude Code, Codex, and Kimi Code ran on this Mac, open **Usage** and click **Load usage**, or ask your assistant “What was my model usage this week?” It reads the counts in your local logs when you ask. [Power and usage](docs/availability-and-usage.md)
 
 ## What stays on your Mac
 

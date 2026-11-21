@@ -18,7 +18,7 @@ struct UsageView: View {
                 if let report {
                     reportBody(report)
                 } else if !loading {
-                    Text("Load token counts recorded by Claude Code and Codex on this Mac. Hereforth keeps the scan local and saves no transcript content.")
+                    Text("Load token counts recorded by Claude Code, Codex, and Kimi Code on this Mac. Hereforth keeps the scan local and saves no transcript content.")
                         .foregroundStyle(.secondary)
                 }
             }

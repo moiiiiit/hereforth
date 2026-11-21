@@ -68,7 +68,7 @@ def main(binary):
         (claude_profile / "projects").mkdir(parents=True)
         (codex_profile / "sessions").mkdir(parents=True)
         env = {**os.environ, "HEREFORTH_HOME": str(owner), "CLAUDE_CONFIG_DIR": str(claude_profile),
-               "CODEX_HOME": str(codex_profile)}
+               "CODEX_HOME": str(codex_profile), "KIMI_CODE_HOME": str(root / "kimi-usage-fixture")}
         chatgpt = root / "chatgpt.json"
         claude = root / "claude.json"
         decision = "The Glacier pilot will switch to batched uploads on Tuesday."
@@ -130,7 +130,7 @@ def main(binary):
             }
             usage = call("read_usage", period="today")["structuredContent"]
             assert usage["period"] == "today" and usage["rows"] == []
-            assert {source["provider"] for source in usage["sources"]} == {"Claude Code", "Codex"}
+            assert {source["provider"] for source in usage["sources"]} == {"Claude Code", "Codex", "Kimi Code"}
             assert str(root) not in str(usage)
             (claude_profile / "projects/synthetic-usage.jsonl").write_text(json.dumps({
                 "type": "assistant", "timestamp": datetime.now(timezone.utc).isoformat(),

@@ -8,7 +8,7 @@ Usage:
   hereforth voice show
   hereforth voice set  (reads UTF-8 writing notes from stdin)
   hereforth voice clear
-  hereforth connect claude-desktop|claude-code|codex [CLI_PATH]
+  hereforth connect claude-desktop|claude-code|codex|kimi-code [CLI_PATH]
   hereforth update status|check|install|enable|disable
   hereforth peer serve [PORT]
   hereforth peer invite SENDER

@@ -5,15 +5,56 @@ The disk image requires an Apple Silicon Mac running macOS 14 or later. It conta
 1. [Download Hereforth.dmg](https://github.com/moiiiiit/hereforth/releases/latest/download/Hereforth.dmg) and open the disk image.
 2. Drag Hereforth to **Applications**. You can put it in the **Applications** folder in your home folder if you prefer a per-user installation.
 3. Eject the disk image and open Hereforth from the folder where you installed it.
-4. In the **Hereforth** menu, select **Connect Assistants…**, choose your client, and click **Connect**. If Claude Desktop has never opened on this Mac, open it once before connecting. Claude Code and Codex use their existing CLI. If Hereforth asks for the executable, choose it in the file picker.
+4. In the **Hereforth** menu, select **Connect Assistants…** and choose your client. Claude Desktop, Claude Code, Codex, and Kimi Code have a **Connect** button. For OpenCode, LM Studio, or another local client, use the copy controls and the setup steps below. Open Claude Desktop once before connecting it. Claude Code and Codex use their existing CLI. If Hereforth asks for the executable, choose it in the file picker.
 
 Fully quit and reopen Claude Desktop after connecting it, or start a fresh Claude Code or Codex session. If your client already has a conflicting server called `hereforth`, Hereforth preserves its settings so you can review that entry in the client. Managed Macs follow their organization's installation and connector rules.
 
 Choose **Hereforth → Check for Updates…** for an immediate check. Automatic checks and installation can be managed in **Hereforth → Settings**. Your library and connector settings stay separate from the app bundle during an update.
 
+## Connect another assistant
+
+Hereforth runs as a local stdio MCP server. The client starts the helper on the Mac with the library. Use a model that can call the client’s tools.
+
+### Kimi Code
+
+In **Connect Assistants…**, select **Kimi Code** and click **Connect Kimi Code**. Hereforth adds a `hereforth` entry to the user-level `~/.kimi-code/mcp.json` (or `$KIMI_CODE_HOME/mcp.json` if set for the connecting process). Open a new Kimi Code session and run `/mcp` to check the connection. Use the current Kimi Code CLI. [Kimi Code MCP documentation](https://moonshotai.github.io/kimi-code/en/customization/mcp.html)
+
+### OpenCode
+
+Select **OpenCode** in **Connect Assistants…**, click **Copy Command**, and run it in Terminal from the project where you use OpenCode. The OpenCode CLI writes the configuration for its installed version. For a standard Applications install, run the following command.
+
+```sh
+opencode mcp add hereforth -- '/Applications/Hereforth.app/Contents/MacOS/hereforth' mcp
+```
+
+Run `opencode mcp list` to check the entry, then open a new OpenCode session. [OpenCode MCP documentation](https://opencode.ai/docs/mcp-servers/)
+
+### LM Studio
+
+Select **LM Studio** in **Connect Assistants…** and click **Copy JSON Configuration**. In LM Studio’s **Program** sidebar, select **Install → Edit mcp.json**. Add the copied `hereforth` entry to `mcpServers` and save.
+
+```json
+{
+  "mcpServers": {
+    "hereforth": {
+      "command": "/Applications/Hereforth.app/Contents/MacOS/hereforth",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Choose a tool-capable model in LM Studio, then check that Hereforth is available in the **Program** sidebar. [LM Studio MCP documentation](https://lmstudio.ai/docs/app/mcp)
+
+### Other local MCP clients
+
+Select **Other Local MCP Client** in **Connect Assistants…** to see the absolute executable path and the single argument `mcp`. Choose the local or stdio transport in your client and enter those values. If the client accepts one shell command, use **Copy Command**. Name the server `hereforth`.
+
+For a first check, ask your assistant “Which conversations have I imported? Use Hereforth.” A client using a hosted model may send returned passages to that provider. Use a local model if you want those passages to stay on your Mac.
+
 ## Build from signed source
 
-The signed-source installer builds natively on Apple Silicon or Intel using Apple's Command Line Tools. If those tools are missing, run `xcode-select --install` and complete the Mac's installation prompt.
+Building from signed source requires Apple's Command Line Tools. If those tools are missing, run `xcode-select --install` and complete the Mac's installation prompt.
 
 ```sh
 curl --fail --show-error --location --proto '=https' --proto-redir '=https' \
