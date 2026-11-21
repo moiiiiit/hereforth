@@ -8,6 +8,7 @@ Usage:
   hereforth voice show
   hereforth voice set  (reads UTF-8 writing notes from stdin)
   hereforth voice clear
+  hereforth connect claude-desktop|claude-code|codex [CLI_PATH]
   hereforth update status|check|install|enable|disable
   hereforth peer serve [PORT]
   hereforth peer invite SENDER
@@ -42,6 +43,8 @@ do {
         try MCPServer(store: Store()).run()
     case "peer":
         try PeerSettings.command(Array(arguments.dropFirst()))
+    case "connect":
+        try ConnectorSetup.command(Array(arguments.dropFirst()))
     case "update" where arguments.count == 2:
         try UpdateLifecycle.command(arguments[1])
     case "voice" where arguments.count == 2:

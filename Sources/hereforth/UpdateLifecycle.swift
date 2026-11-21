@@ -7,12 +7,25 @@ enum UpdateLifecycle {
         let executable = Bundle.main.executableURL?.resolvingSymlinksInPath()
         guard let appURL = executable?.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent(),
               let bundle = Bundle(url: appURL), bundle.bundleIdentifier == "com.hereforth.app",
-              let version = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
-              let script = bundle.url(forResource: "update", withExtension: "sh")
+              let version = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         else {
             throw HereforthError("Use the updater bundled with the installed Hereforth app.")
         }
-        let stable = bundle.object(forInfoDictionaryKey: "HereforthUpdateChannel") as? String == "stable"
+        let channel = bundle.object(forInfoDictionaryKey: "HereforthUpdateChannel") as? String
+        if channel == "binary" {
+            if operation == "status" {
+                let track = bundle.object(forInfoDictionaryKey: "HereforthBinaryUpdateTrack") as? String ?? "binary"
+                let release = bundle.object(forInfoDictionaryKey: "HereforthReleaseVersion") as? String ?? version
+                print("Hereforth \(release) (\(track))")
+                print("Manage updates in Hereforth’s app menu and Settings.")
+                return
+            }
+            throw HereforthError("Open Hereforth → Check for Updates or manage automatic checks in Hereforth Settings.")
+        }
+        guard let script = bundle.url(forResource: "update", withExtension: "sh") else {
+            throw HereforthError("Use the updater bundled with the installed Hereforth app.")
+        }
+        let stable = channel == "stable"
         let home = FileManager.default.homeDirectoryForCurrentUser
         let agent = UpdateAgent(home: home, script: script, stable: stable, domain: "gui/\(getuid())") { arguments in
             let process = Process()

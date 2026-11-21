@@ -1,18 +1,18 @@
 # Make a stable Hereforth release
 
-Hereforth releases use annotated Git tags signed with a dedicated SSH Ed25519 key. The first installer pins the public key. The installed updater uses the public signer shipped in the installed app. The GitHub release page holds notes and source downloads. The supported first-install path checks out verified Git source and builds natively with Xcode Command Line Tools.
+The standard download is an Apple Silicon DMG containing a Developer ID-signed and notarized Hereforth app. The same GitHub release also carries the first-install script for a native build from signed source. The source installer and binary updater verify releases through separate signing keys.
 
-## Release key custody
+## Keep release keys separate
 
-Use a dedicated release key named `hereforth-release` with a strong passphrase. Keep the private key in encrypted storage outside the repository and CI. If you need to create a key, an example is `ssh-keygen -t ed25519 -a 100 -C hereforth-release -f ~/.ssh/hereforth_release`.
+- **Source verification.** Use the dedicated SSH Ed25519 release key `hereforth-release`. Keep the encrypted private key outside the repository and CI. If you need to create a key, an example is `ssh-keygen -t ed25519 -a 100 -C hereforth-release -f ~/.ssh/hereforth_release`. Keep the public entry in `scripts/release-signers` identical to the embedded `allowed_signer` line in `scripts/bootstrap.sh`. A change to this pin requires a renewed bootstrap obtained from a trusted source.
+- **macOS signing and notarization.** Use an authorized Developer ID Application identity. Store notary credentials in a Keychain profile or sign and notarize through Xcode. Keep these credentials out of the repository and CI logs.
+- **Binary update verification.** Use the dedicated Sparkle Ed25519 Keychain account `com.hereforth.release`. The app includes its public key. Keep the matching private key protected and keep it stable across releases so already-installed copies can verify the next update.
 
-Publish only the public key. The allowed-signers entry begins with `hereforth-release namespaces="git"` followed by the Ed25519 public key. Keep `scripts/release-signers` and the embedded `allowed_signer` line in `scripts/bootstrap.sh` identical. The local bootstrap smoke test checks this. Key changes require coordination with people who already pinned a release key. Use a renewed bootstrap obtained from a trusted source if the existing pin changes.
+## Prepare the source tag
 
-## Prepare and sign
+Pick a new `vMAJOR.MINOR.PATCH` version with decimal fields and no leading zeros. A suffix makes a preview tag. Pass macOS CI on the exact commit, test with a separate Hereforth library, and prepare release notes. Keep the Sparkle build number higher than every previous production build number.
 
-1. Pick a new `vMAJOR.MINOR.PATCH` version with decimal fields and no leading zeros. A suffix makes a preview tag. The bootstrap and updater select stable tags by version.
-2. Verify macOS CI on the exact commit. Exercise the app build and assistant integration on a test Mac, using a separate library and synthetic evidence. Prepare the GitHub release notes before pushing the tag.
-3. Create the annotated SSH-signed tag on the tested commit. Substitute the actual version and your local release key path.
+Create and verify an annotated SSH-signed tag on the tested commit. Substitute the actual version and your release key path.
 
 ```sh
 tag=vX.Y.Z
@@ -22,26 +22,51 @@ git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile="$PWD/scripts/release-signer
   verify-tag "$tag"
 ```
 
-From a clean detached checkout of the verified tag, `./scripts/install.sh` builds for the architecture of that Mac. Validate the bundle version and signature on the test Mac.
+Use a clean, detached checkout of this tag for release builds. The source installer builds for the architecture of that Mac. The [installation guide](install.md) covers source verification and installation.
+
+## Build and verify the DMG
+
+On an Apple Silicon build Mac, use `scripts/package-macos.sh stage` to build the production app for signing and notarization. Use the same release version, build number and Sparkle key for staging and packaging.
 
 ```sh
-app="$HOME/Applications/Hereforth.app"
-/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist"
-codesign --verify --deep --strict "$app"
+build=20002  # Replace with this release's build number
+workspace="$(mktemp -d)"
+archive="$workspace/Hereforth.xcarchive"
+./scripts/package-macos.sh stage --version "${tag#v}" --build "$build" --track production \
+  --output "$workspace/Hereforth.app"
+python3 scripts/archive-macos.py "$workspace/Hereforth.app" "$archive" TEAM_ID
+xcodebuild -exportArchive -archivePath "$archive" \
+  -exportOptionsPlist "$archive.upload.plist" -allowProvisioningUpdates
+xcodebuild -exportNotarizedApp -archivePath "$archive" -exportPath "$workspace/export"
 ```
+
+Substitute your Apple development team ID for `TEAM_ID`. The cloud export uses your signed-in Xcode account. If Apple is still processing the upload, wait and retry `xcodebuild -exportNotarizedApp` against the same archive. Verify the exported app before passing it to the packaging command.
+
+```sh
+out="$workspace/dist"
+./scripts/package-macos.sh dmg --version "${tag#v}" --build "$build" --track production \
+  --output "$out" --asset-base-url "https://github.com/moiiiiit/hereforth/releases/download/$tag" \
+  --notarized-app "$workspace/export/Hereforth.app"
+python3 Tests/macos-artifact-smoke.py "$out/Hereforth.dmg" \
+  --version "${tag#v}" --build "$build" --notarized-app
+```
+
+The packaging script also supports building and notarizing directly with `--identity` and `--notary-profile`. Check the available options with `./scripts/package-macos.sh --help`. Describe the notarized app inside the DMG in the release notes. Claim outer disk-image notarization only after verifying a separate stapled ticket with `xcrun stapler validate` and rerunning the smoke test with `--notarized-dmg`.
+
+The smoke test mounts the image without installing the app and verifies the Applications link, arm64 code, Sparkle linkage, signature and resources. On a test Mac, drag the same verified app into Applications and exercise one test connector between **Hereforth → Connect Assistants…** and a synthetic assistant profile. Confirm an existing conflicting connector remains intact.
 
 ## Publish
 
-Push the exact signed tag once the release is ready. Stable installers can discover it as soon as the tag is visible. Create the GitHub release against that existing tag and attach an exact copy of the tagged bootstrap as the `install.sh` asset.
+Push the exact signed tag once all assets are ready. Stable source installers can discover it as soon as the Git tag is visible. Upload the DMG and an exact copy of the tagged bootstrap under the `install.sh` asset name.
 
 ```sh
 git push origin "refs/tags/$tag"
 asset_dir="$(mktemp -d)"
 git show "$tag:scripts/bootstrap.sh" > "$asset_dir/install.sh"
 gh release create "$tag" --verify-tag --title "Hereforth $tag" \
-  --notes-file release-notes.md "$asset_dir/install.sh"
+  --notes-file release-notes.md "$out/Hereforth.dmg" "$asset_dir/install.sh"
 rm "$asset_dir/install.sh"
 rmdir "$asset_dir"
 ```
 
-Users install from the signed source with the [installation guide](install.md). The automatic source archives on GitHub lack the Git tag object and its signature. Use the verified Git checkout to build a stable installation. Publish corrections under a new version and keep released tags fixed.
+Confirm the enclosure URL in the generated `appcast.xml` downloads the exact disk image you just signed with Sparkle. Publish that feed as `updates/appcast.xml` on the canonical default branch only after the asset is available. Preview releases use a separate feed. Publish corrections under a new version and keep released tags and assets fixed.

@@ -5,13 +5,32 @@ import UniformTypeIdentifiers
 
 @main
 struct HereforthApp: App {
+    #if HEREFORTH_BINARY_UPDATER
+    @StateObject private var binaryUpdates = BinaryUpdater()
+    #endif
+
     var body: some Scene {
         Window("Hereforth", id: "library") {
             LibraryView()
                 .frame(minWidth: 810, minHeight: 500)
         }
         .defaultSize(width: 1040, height: 660)
-        .commands { LibraryCommands() }
+        .commands {
+            LibraryCommands()
+            ConnectAssistantCommands()
+            #if HEREFORTH_BINARY_UPDATER
+            BinaryUpdateCommands(updates: binaryUpdates)
+            #endif
+        }
+
+        Window("Connect Assistants", id: "connect-assistants") {
+            ConnectAssistantsView()
+        }
+        .windowResizability(.contentSize)
+
+        #if HEREFORTH_BINARY_UPDATER
+        Settings { BinaryUpdateSettings(updates: binaryUpdates) }
+        #endif
     }
 }
 

@@ -25,9 +25,20 @@ jobs:
           helper="$(swift build --show-bin-path)/hereforth"
           python3 Tests/smoke-mcp.py "$helper"
           python3 Tests/peer-smoke.py "$helper"
+          python3 Tests/binary-runtime-smoke.py "$helper"
       - name: Verify first-install release signatures
         run: python3 Tests/bootstrap-smoke.py
       - name: Verify signed update and rollback behavior
         run: |
           python3 Tests/update-smoke.py
           python3 Tests/update-lifecycle-smoke.py
+      - name: Verify Apple Silicon Sparkle build
+        env:
+          HEREFORTH_BINARY_UPDATER: '1'
+        run: |
+          bash Tests/binary-update-config.sh
+          swift build --arch arm64 --product HereforthApp
+          app="$(swift build --arch arm64 --show-bin-path)/HereforthApp"
+          test "$(/usr/bin/lipo -archs "$app")" = arm64
+          /usr/bin/otool -L "$app" | grep -F '@rpath/Sparkle.framework/' | grep -F 'current version 2.10.1'
+          /usr/bin/otool -l "$app" | grep -F 'path @executable_path/../Frameworks '

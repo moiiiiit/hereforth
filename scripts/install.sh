@@ -53,8 +53,8 @@ if [[ "$tag" =~ ^v((0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))$ ]]; then
     fi
 fi
 
-swift build --configuration release
-bin="$(swift build --configuration release --show-bin-path)"
+HEREFORTH_BINARY_UPDATER=0 swift build --configuration release
+bin="$(HEREFORTH_BINARY_UPDATER=0 swift build --configuration release --show-bin-path)"
 mkdir -p "$dest_dir"
 stage="$(mktemp -d "$dest_dir/.hereforth.XXXXXX")"
 trap 'rm -rf "$stage"' EXIT
@@ -101,41 +101,14 @@ if ! "$helper" update configure; then
     status=1
 fi
 if $claude_code; then
-    if command -v claude >/dev/null 2>&1; then
-        code_dir="${CLAUDE_CONFIG_DIR:-$HOME}"
-        if ! swift scripts/install-support.swift code "$code_dir/.claude.json" "$helper" "$(command -v claude)"; then
-            status=1
-        fi
-    else
-        printf 'Claude Code registration requires claude on PATH.\n' >&2
-        status=1
-    fi
+    "$helper" connect claude-code || status=1
 fi
 
 if $claude_desktop; then
-    desktop="$HOME/Library/Application Support/Claude"
-    if [[ -d "$desktop" ]]; then
-        if ! swift scripts/install-support.swift desktop "$desktop/claude_desktop_config.json" "$helper"; then
-            status=1
-        fi
-    else
-        printf 'Open Claude Desktop once to initialize its settings, then rerun with --claude-desktop.\n' >&2
-        status=1
-    fi
+    "$helper" connect claude-desktop || status=1
 fi
 
 if $codex_client; then
-    codex_path="$(command -v codex || true)"
-    if [[ -z "$codex_path" ]]; then
-        codex_path="/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
-    fi
-    if [[ -x "$codex_path" ]]; then
-        if ! swift scripts/install-support.swift codex "$codex_path" "$helper"; then
-            status=1
-        fi
-    else
-        printf 'Codex registration requires the Codex CLI.\n' >&2
-        status=1
-    fi
+    "$helper" connect codex || status=1
 fi
 exit "$status"
