@@ -24,6 +24,7 @@ jobs:
           swift build
           helper="$(swift build --show-bin-path)/hereforth"
           python3 Tests/smoke-mcp.py "$helper"
+          python3 Tests/code-mode-smoke.py "$helper"
           python3 Tests/peer-smoke.py "$helper"
           python3 Tests/twenty-peer-smoke.py "$helper"
           python3 Tests/phone-actions-smoke.py "$helper"

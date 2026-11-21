@@ -4,7 +4,7 @@ import HereforthCore
 let usage = """
 Usage:
   hereforth import FILE...
-  hereforth mcp
+  hereforth mcp [--code-mode]
   hereforth voice show
   hereforth voice set  (reads UTF-8 writing notes from stdin)
   hereforth voice clear
@@ -43,8 +43,10 @@ func readVoiceNotes() throws -> String {
 let arguments = Array(CommandLine.arguments.dropFirst())
 do {
     switch arguments.first {
-    case "mcp" where arguments.count == 1:
-        try MCPServer(store: Store()).run()
+    case "mcp" where arguments == ["mcp"] || arguments == ["mcp", "--code-mode"]:
+        try MCPServer(store: Store(), codeMode: arguments.count == 2).run()
+    case "_code-mode-worker" where arguments.count == 1:
+        CodeMode.runWorker()
     case "peer":
         try PeerSettings.command(Array(arguments.dropFirst()))
     case "phone":

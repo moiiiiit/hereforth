@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "scenario": "synthetic-juniper",
+  "system_instruction": "Use Hereforth evidence and cite sources.",
+  "prompt": "What did we decide about Juniper this week, and which decisions are missing from Ryan’s latest shared update?",
+  "content_criteria": {
+    "c1": "Friday at 10 a.m. Pacific was confirmed.",
+    "c2": "Only pilot accounts get batched uploads.",
+    "c3": "The existing billing CSV schema stays unchanged.",
+    "c4": "Ryan’s latest update includes the rollout time.",
+    "c5": "Ryan’s update omits pilot-only batched uploads.",
+    "c6": "Ryan’s update omits retaining the existing CSV schema.",
+    "c7": "Thursday at 3 p.m. Pacific was a proposal only, if mentioned.",
+    "c8": "Exclude the prior-week retention decision and unrelated Bayberry details."
+  },
+  "grounding_criteria": {
+    "g1": {
+      "claim": "Confirmed timing",
+      "permitted_citations": [
+        "hf:e2d8bd345428a07629c7dedd11c4165504710d75e342100bf1b465658ffec36f"
+      ]
+    },
+    "g2": {
+      "claim": "Pilot scope",
+      "permitted_citations": [
+        "hf:e2d8bd345428a07629c7dedd11c4165504710d75e342100bf1b465658ffec36f",
+        "hf:2b4ced3943c5a62408c3d2fd670582fedcbc92234fed4c5ff91ff30aff5e8935"
+      ]
+    },
+    "g3": {
+      "claim": "Billing schema",
+      "permitted_citations": [
+        "hf:e2d8bd345428a07629c7dedd11c4165504710d75e342100bf1b465658ffec36f",
+        "hf:8eb2d4d0a7fd5e2ef0cb571a3f2179e29239fe927e3832671992f34f9aa64ca7"
+      ]
+    },
+    "g4": {
+      "claim": "Ryan’s approved update",
+      "thread_id": "4EE8748B-1819-42BC-BA5A-AE06540E09A1",
+      "posted_at": "2026-11-21T21:33:56Z"
+    }
+  },
+  "scoring": {
+    "content_max": 8,
+    "grounding_max": 4,
+    "notes": [
+      "Credit the Ryan timing overlap only when the answer identifies Friday at 10 a.m. Pacific as present in Ryan’s update.",
+      "For grounding, require a full relevant hf: citation attached to each confirmed decision and the Ryan thread ID or full timestamp that identifies the exact approved update. A single source can support multiple decisions.",
+      "An answer without evidence earns no points for avoiding the earlier proposal or unrelated material.",
+      "Mentioning prior-week retention or Bayberry as an explicit exclusion is allowed. Including either as a current decision or omission fails c8."
+    ]
+  },
+  "trials": [
+    {
+      "model": "Qwen3-4B-Q4_K_M",
+      "mode": "normal",
+      "trial": 1,
+      "latency_seconds": 7.245,
+      "input_tokens": 3191,
+      "cached_input_tokens": 0,
+      "output_tokens": 308,
+      "runtime_cache_n": 0,
+      "observed_tool_calls": 2,
+      "answer": "From the search results, here are the decisions made about Juniper this week:\n\n1. **Juniper billing review** (2026-11-20): The existing billing CSV schema was retained. The proposed schema change was dropped.\n\n2. **Juniper pilot approval** (2026-11-20): Batched uploads are limited to pilot accounts. Non-pilot accounts keep individual uploads.\n\n3. **Juniper release decision** (2026-11-17): A proposal for a release was made, with a scheduled time of Thursday at 3 p.m. Pacific. The decision was to enable batched uploads for all accounts and to keep the existing billing CSV schema unchanged.\n\n4. **Juniper release decision** (2026-11-21): Confirmed that the release will go live on Friday at 10 a.m. Pacific. Batched uploads are enabled only for pilot accounts, and the existing billing CSV schema remains unchanged.\n\nFrom Ryan's latest shared update, the decision that is missing is the **Juniper pilot approval** decision, which specifies that batched uploads are limited to pilot accounts, while non-pilot accounts keep individual uploads. This information is not included in Ryan's update.",
+      "content_score": 5,
+      "grounding_score": 0,
+      "failed_content_criteria": [
+        "c4",
+        "c6",
+        "c7"
+      ],
+      "failed_grounding_criteria": [
+        "g1",
+        "g2",
+        "g3",
+        "g4"
+      ],
+      "scoring_note": "Correct final decisions. Identifies the pilot omission, but omits the billing omission and describes the earlier all-account rollout as a decision.",
+      "client": "llama-server",
+      "model_source": "configured"
+    },
+    {
+      "model": "Qwen3-4B-Q4_K_M",
+      "mode": "code",
+      "trial": 1,
+      "latency_seconds": 6.818,
+      "input_tokens": 1414,
+      "cached_input_tokens": 0,
+      "output_tokens": 331,
+      "runtime_cache_n": 0,
+      "observed_tool_calls": 1,
+      "answer": "The decisions made about Juniper this week include:\n\n1. Juniper billing review: retain the existing billing CSV schema. The proposed schema change was dropped.\n2. Juniper approval notes: batched uploads are limited to pilot accounts. Non-pilot accounts keep individual uploads.\n3. Juniper retention: keep 45 days of staging logs. This was agreed in the prior local calendar week.\n4. Juniper proposal: Thursday at 3 p.m. Pacific, batch uploads for all accounts, and a revised billing CSV schema. These are options for review.\n5. Juniper was mentioned in the Bayberry planning meeting. Bayberry agreed to a Tuesday migration and 15-day debug logs. This is a separate project.\n6. Juniper release decision, confirmed: Friday at 10 a.m. Pacific. Enable batched uploads only for pilot accounts. Keep the existing billing CSV schema unchanged.\n\nHowever, all the decisions are present in the shared update from Ryan. There are no missing decisions from Ryan’s latest shared update.",
+      "content_score": 4,
+      "grounding_score": 0,
+      "failed_content_criteria": [
+        "c4",
+        "c5",
+        "c6",
+        "c8"
+      ],
+      "failed_grounding_criteria": [
+        "g1",
+        "g2",
+        "g3",
+        "g4"
+      ],
+      "scoring_note": "Calls the Thursday, all-account, and schema change options a proposal and identifies Friday as confirmed. Also lists prior-week retention and Bayberry in its current-decision list.",
+      "client": "llama-server",
+      "model_source": "configured"
+    },
+    {
+      "model": "Qwen3-4B-Q4_K_M",
+      "mode": "code",
+      "trial": 2,
+      "latency_seconds": 6.087,
+      "input_tokens": 1414,
+      "cached_input_tokens": 0,
+      "output_tokens": 335,
+      "runtime_cache_n": 0,
+      "observed_tool_calls": 1,
+      "answer": "The decisions made about Juniper this week include:\n\n1. Juniper billing review: retain the existing billing CSV schema. The proposed schema change was dropped.\n2. Juniper approval notes: batched uploads are limited to pilot accounts. Non-pilot accounts keep individual uploads.\n3. Juniper retention: keep 45 days of staging logs. This was agreed in the prior local calendar week.\n4. Juniper proposal: Thursday at 3 p.m. Pacific, batch uploads for all accounts, and a revised billing CSV schema. These are options for review.\n5. Juniper was mentioned in the Bayberry planning meeting. Bayberry agreed to a Tuesday migration and 15-day debug logs. This is a separate project.\n6. Juniper release decision, confirmed: Friday at 10 a.m. Pacific. Enable batched uploads only for pilot accounts. Keep the existing billing CSV schema unchanged.\n\nHowever, all the decisions are present in the shared updates from Ryan’s latest shared update. There are no missing decisions from Ryan’s latest shared update.",
+      "content_score": 4,
+      "grounding_score": 0,
+      "failed_content_criteria": [
+        "c4",
+        "c5",
+        "c6",
+        "c8"
+      ],
+      "failed_grounding_criteria": [
+        "g1",
+        "g2",
+        "g3",
+        "g4"
+      ],
+      "scoring_note": "Calls the Thursday, all-account, and schema change options a proposal and identifies Friday as confirmed. Also lists prior-week retention and Bayberry in its current-decision list.",
+      "client": "llama-server",
+      "model_source": "configured"
+    },
+    {
+      "model": "Qwen3-4B-Q4_K_M",
+      "mode": "normal",
+      "trial": 2,
+      "latency_seconds": 5.154,
+      "input_tokens": 3191,
+      "cached_input_tokens": 0,
+      "output_tokens": 208,
+      "runtime_cache_n": 0,
+      "observed_tool_calls": 2,
+      "answer": "From the search results, here are the decisions made about Juniper this week:\n\n1. **Juniper billing review**: The existing billing CSV schema was retained. The proposed schema change was dropped.\n2. **Juniper pilot approval**: Batched uploads are limited to pilot accounts. Non-pilot accounts keep individual uploads.\n3. **Juniper release decision**: Confirmed that Juniper will go live Friday at 10 a.m. Pacific. The rollout checklist is ready.\n\nFrom Ryan's latest shared update, the decision about Juniper is mentioned, but it is not specified which decisions are missing. However, based on the search results, the decisions that are missing from Ryan's update would be the ones not mentioned in his update, such as the Juniper billing review and the Juniper pilot approval.",
+      "content_score": 7,
+      "grounding_score": 0,
+      "failed_content_criteria": [
+        "c4"
+      ],
+      "failed_grounding_criteria": [
+        "g1",
+        "g2",
+        "g3",
+        "g4"
+      ],
+      "scoring_note": "Identifies both missing decisions. Refers to a Juniper decision in Ryan’s update without naming the shared Friday timing.",
+      "client": "llama-server",
+      "model_source": "configured"
+    },
+    {
+      "model": "claude-sonnet-5",
+      "model_source": "observed",
+      "client": "claude",
+      "mode": "code",
+      "trial": 1,
+      "latency_seconds": 12.761,
+      "input_tokens": 14239,
+      "cached_input_tokens": 6353,
+      "output_tokens": 1117,
+      "observed_tool_calls": 2,
+      "answer": "## Decisions on Juniper this week\n\nThe confirmed, current decision (as of today, Nov 21) per `hf:e2d8bd345428a07629c7dedd11c4165504710d75e342100bf1b465658ffec36f`:\n- **Release timing**: Friday at 10 a.m. Pacific (this supersedes an earlier Thursday 3 p.m. proposal from `hf:27b9c23e84362b991ddb87366cfd60aaf330af871652f743d8e8bfdbd749f7de`)\n- **Batched uploads**: enabled only for pilot accounts — consistent with `hf:2b4ced3943c5a62408c3d2fd670582fedcbc92234fed4c5ff91ff30aff5e8935`\n- **Billing CSV schema**: kept unchanged (proposed schema change dropped) — consistent with `hf:8eb2d4d0a7fd5e2ef0cb571a3f2179e29239fe927e3832671992f34f9aa64ca7`\n\nAlso still in effect from last week: **45-day retention of staging logs** (`hf:066cefb0e7e29c70b09285e1a1a8b96c311ac7c1034ee5030b8f3c93a8f1054c`, agreed prior week, not superseded).\n\nNote: Juniper was also referenced in a separate Bayberry planning decision (Tuesday migration, 15-day debug logs) — that's a different project's decision, not a Juniper decision itself (`hf:336facb282d77ffa4c163527d392c15eec14dbe93378b9a8e01a810deeb0c57f`).\n\n## What's missing from Ryan's shared update\n\nRyan's update (shared Nov 21, thread `4EE8748B-1819-42BC-BA5A-AE06540E09A1`) only says: *\"Juniper will go live Friday at 10 a.m. Pacific. The rollout checklist is ready.\"*\n\nMissing from it:\n1. **Batched uploads limited to pilot accounts only** — not mentioned\n2. **Billing CSV schema stays unchanged** — not mentioned\n3. **45-day staging log retention** — not mentioned (may be assumed as already-settled context, but it's not referenced)\n\nRyan's note confirms the timing decision but omits the two scope decisions (uploads, schema) made in the same Nov 21 decision record.",
+      "content_score": 7,
+      "grounding_score": 4,
+      "failed_content_criteria": [
+        "c8"
+      ],
+      "failed_grounding_criteria": [],
+      "scoring_note": "Correctly separates the earlier proposal and Bayberry. Lists prior-week retention as a third omission."
+    },
+    {
+      "model": "claude-sonnet-5",
+      "model_source": "observed",
+      "client": "claude",
+      "mode": "normal",
+      "trial": 1,
+      "latency_seconds": 11.118,
+      "input_tokens": 14016,
+      "cached_input_tokens": 11900,
+      "output_tokens": 768,
+      "observed_tool_calls": 2,
+      "answer": "## This week's Juniper decisions (confirmed)\n\nPer the Nov 21 decision record (hf:e2d8bd345428a07629c7dedd11c4165504710d75e342100bf1b465658ffec36f), finalized from the Nov 17 proposal options:\n\n1. **Release timing:** Friday at 10 a.m. Pacific\n2. **Batched uploads:** Enabled only for pilot accounts — non-pilot accounts keep individual uploads (confirmed again in the Nov 20 approval notes, hf:2b4ced3943c5a62408c3d2fd670582fedcbc92234fed4c5ff91ff30aff5e8935)\n3. **Billing CSV schema:** Kept unchanged — the proposed schema change was dropped (Nov 20 billing review, hf:8eb2d4d0a7fd5e2ef0cb571a3f2179e29239fe927e3832671992f34f9aa64ca7)\n\n(Also still in effect from the prior week: 45-day staging log retention, agreed 2026-11-14 — hf:066cefb0e7e29c70b09285e1a1a8b96c311ac7c1034ee5030b8f3c93a8f1054c.)\n\n## Gap vs. Ryan's latest update\n\nRyan's shared update (2026-11-21, thread 4EE8748B) only says:\n> \"Juniper will go live Friday at 10 a.m. Pacific. The rollout checklist is ready.\"\n\nMissing from it:\n- **Batched uploads restricted to pilot accounts only** (non-pilot stays on individual uploads)\n- **Billing CSV schema staying unchanged** (the proposed change was explicitly dropped)\n\nWorth flagging to Ryan since the checklist should reflect the pilot-only batching scope and the no-schema-change decision, not just the go-live time.",
+      "content_score": 7,
+      "grounding_score": 3,
+      "failed_content_criteria": [
+        "c8"
+      ],
+      "failed_grounding_criteria": [
+        "g4"
+      ],
+      "scoring_note": "Names both omissions and ties all current decisions to usable citations. Adds the prior-week retention decision instead of excluding it. Gives only a thread prefix and day."
+    },
+    {
+      "model": "claude-sonnet-5",
+      "model_source": "observed",
+      "client": "claude",
+      "mode": "normal",
+      "trial": 2,
+      "latency_seconds": 13.902,
+      "input_tokens": 14015,
+      "cached_input_tokens": 11900,
+      "output_tokens": 1095,
+      "observed_tool_calls": 2,
+      "answer": "Flagging one oddity first: the team_standup result for peer \"Ryan\" lists the update author as **\"owner\"** rather than Ryan — that's worth double-checking on your end in case of a misattribution, since I can't verify it independently.\n\n**Juniper decisions this week (Nov 17–21):**\n1. **Go-live timing**: Friday at 10 a.m. Pacific (hf:e2d8bd34…ecc36f, 2026-11-21)\n2. **Rollout scope**: Batched uploads enabled only for pilot accounts; non-pilot accounts keep individual uploads (hf:2b4ced39…e8935, 2026-11-20)\n3. **Billing schema**: Keep the existing billing CSV schema unchanged — the proposed schema change was dropped (hf:8eb2d4d0…64ca7, 2026-11-20; confirmed again hf:e2d8bd34…ecc36f)\n\n(The Nov 17 entry was an earlier proposal — Thursday 3 p.m., batch for all accounts, revised schema — that was superseded by the above; Nov 14's log-retention item is from the prior week and Nov 19's Bayberry mention is a different project.)\n\n**What's missing from Ryan's latest shared update:**\nRyan's update only states the Friday 10 a.m. go-live and that the rollout checklist is ready. It's missing:\n- The **pilot-only scope** for batched uploads (non-pilot accounts stay on individual uploads)\n- The **billing CSV schema decision** (kept unchanged, proposed change dropped)\n\nWorth flagging to Ryan so the checklist reflects the pilot-only rollout and schema decision explicitly.",
+      "content_score": 8,
+      "grounding_score": 0,
+      "failed_content_criteria": [],
+      "failed_grounding_criteria": [
+        "g1",
+        "g2",
+        "g3",
+        "g4"
+      ],
+      "scoring_note": "Names both omissions and explicitly excludes the earlier proposal, prior-week retention, and Bayberry from the current decisions. All passage citations are shortened and Ryan’s update has no exact thread ID or timestamp."
+    },
+    {
+      "model": "claude-sonnet-5",
+      "model_source": "observed",
+      "client": "claude",
+      "mode": "code",
+      "trial": 2,
+      "latency_seconds": 10.032,
+      "input_tokens": 14025,
+      "cached_input_tokens": 11954,
+      "output_tokens": 749,
+      "observed_tool_calls": 2,
+      "answer": "## Juniper decisions this week\n\nPer the confirmed decision (`hf:e2d8bd3...`, Nov 21), the final call was:\n- **Go-live: Friday at 10 a.m. Pacific**\n- **Batched uploads: enabled only for pilot accounts** (non-pilot stays on individual uploads, per `hf:2b4ced3...`)\n- **Billing CSV schema: unchanged** — the proposed schema change was dropped (`hf:8eb2d4d...`)\n\nThis superseded an earlier proposal (`hf:27b9c23...`, Nov 17) that had floated Thursday 3 p.m., batch uploads for *all* accounts, and a revised CSV schema — those options were not adopted.\n\n(Juniper was also mentioned in Bayberry planning, `hf:336facb...`, but that's a separate project and not relevant here.)\n\n## What's missing from Ryan's latest shared update\n\nRyan's update (shared Nov 21, thread `4EE8748B...`) only says:\n> \"Juniper will go live Friday at 10 a.m. Pacific. The rollout checklist is ready.\"\n\nMissing from it:\n- **No mention of the batched uploads scope** — that it's limited to pilot accounts only, not all accounts.\n- **No mention of the billing CSV schema decision** — that the existing schema is being retained and the proposed change was dropped.\n\nYou may want to flag those two gaps to Ryan since both were explicit parts of the final decision.",
+      "content_score": 8,
+      "grounding_score": 0,
+      "failed_content_criteria": [],
+      "failed_grounding_criteria": [
+        "g1",
+        "g2",
+        "g3",
+        "g4"
+      ],
+      "scoring_note": "Correct decisions, two omissions, and explicit exclusion of Bayberry. All passage citations and the Ryan thread reference are shortened."
+    },
+    {
+      "model": "gpt-6.2-sol",
+      "model_source": "requested",
+      "client": "codex",
+      "mode": "code",
+      "trial": 1,
+      "latency_seconds": 20.862,
+      "input_tokens": 73243,
+      "cached_input_tokens": 62336,
+      "output_tokens": 595,
+      "observed_tool_calls": 3,
+      "answer": "Ryan’s Nov. 21 shared update covers the **Friday, 10 a.m. Pacific go-live** and says the rollout checklist is ready. It leaves out two of the three Juniper decisions confirmed this week. [Juniper release decision](hf:e2d8bd345428a07629c7dedd11c4165504710d75e342100bf1b465658ffec36f) · Ryan’s Hereforth standup, Nov. 21.\n\n- **Batched uploads are limited to pilot accounts.** All other accounts keep individual uploads. [Juniper pilot approval](hf:2b4ced3943c5a62408c3d2fd670582fedcbc92234fed4c5ff91ff30aff5e8935)\n- **The existing billing CSV schema stays in place.** The proposed schema change was dropped. [Juniper billing review](hf:8eb2d4d0a7fd5e2ef0cb571a3f2179e29239fe927e3832671992f34f9aa64ca7)",
+      "content_score": 8,
+      "grounding_score": 3,
+      "failed_content_criteria": [],
+      "failed_grounding_criteria": [
+        "g4"
+      ],
+      "scoring_note": "Answers the comparison correctly and cites all three decisions. Attributes Ryan’s update by day only."
+    },
+    {
+      "model": "gpt-6.2-sol",
+      "model_source": "requested",
+      "client": "codex",
+      "mode": "normal",
+      "trial": 1,
+      "latency_seconds": 18.221,
+      "input_tokens": 52203,
+      "cached_input_tokens": 37248,
+      "output_tokens": 540,
+      "observed_tool_calls": 6,
+      "answer": "This week we confirmed three Juniper decisions. Ryan’s Nov. 21 shared update covers the launch time and says the rollout checklist is ready. It leaves out the upload and billing decisions. (Ryan’s Hereforth update, thread `4EE8748B-1819-42BC-BA5A-AE06540E09A1`)\n\n| Decision | In Ryan’s update? |\n|---|---|\n| Go live Friday at 10 a.m. Pacific. [Release decision](hf:e2d8bd345428a07629c7dedd11c4165504710d75e342100bf1b465658ffec36f) | Yes |\n| Enable batched uploads only for pilot accounts. All other accounts keep individual uploads. [Pilot approval](hf:2b4ced3943c5a62408c3d2fd670582fedcbc92234fed4c5ff91ff30aff5e8935) | Missing |\n| Keep the existing billing CSV schema. [Billing review](hf:8eb2d4d0a7fd5e2ef0cb571a3f2179e29239fe927e3832671992f34f9aa64ca7) | Missing |",
+      "content_score": 8,
+      "grounding_score": 4,
+      "failed_content_criteria": [],
+      "failed_grounding_criteria": [],
+      "scoring_note": "Distinguishes all three decisions and both omissions, with exact citations and the full Ryan thread ID."
+    },
+    {
+      "model": "gpt-6.2-sol",
+      "model_source": "requested",
+      "client": "codex",
+      "mode": "normal",
+      "trial": 2,
+      "latency_seconds": 18.731,
+      "input_tokens": 52781,
+      "cached_input_tokens": 47616,
+      "output_tokens": 568,
+      "observed_tool_calls": 7,
+      "answer": "Ryan’s Nov. 21 shared update includes the **Friday 10 a.m. Pacific** go-live and says the rollout checklist is ready. It leaves out two of this week’s three confirmed Juniper decisions. (Hereforth team standup, Ryan, Nov. 21 · thread `4EE8748B-1819-42BC-BA5A-AE06540E09A1`)\n\n| Decision this week | In Ryan’s update? |\n|---|---|\n| Go live Friday at 10 a.m. Pacific. [Release decision](hf:e2d8bd345428a07629c7dedd11c4165504710d75e342100bf1b465658ffec36f) | Yes |\n| Enable batched uploads only for pilot accounts. All other accounts continue with individual uploads. [Pilot approval](hf:2b4ced3943c5a62408c3d2fd670582fedcbc92234fed4c5ff91ff30aff5e8935) | **Missing** |\n| Keep the existing billing CSV schema. [Billing review](hf:8eb2d4d0a7fd5e2ef0cb571a3f2179e29239fe927e3832671992f34f9aa64ca7) | **Missing** |",
+      "content_score": 8,
+      "grounding_score": 4,
+      "failed_content_criteria": [],
+      "failed_grounding_criteria": [],
+      "scoring_note": "Matches the confirmed decisions, Ryan’s overlap, both omissions, and all four source references."
+    },
+    {
+      "model": "gpt-6.2-sol",
+      "model_source": "requested",
+      "client": "codex",
+      "mode": "code",
+      "trial": 2,
+      "latency_seconds": 22.024,
+      "input_tokens": 64058,
+      "cached_input_tokens": 60544,
+      "output_tokens": 624,
+      "observed_tool_calls": 2,
+      "answer": "We confirmed three Juniper decisions this week. Ryan’s Nov. 21 shared update includes the go-live time and says the rollout checklist is ready. It omits the upload and billing decisions. [Ryan’s shared update](hf:4EE8748B-1819-42BC-BA5A-AE06540E09A1)\n\n- **Go live Friday at 10 a.m. Pacific.** Ryan included this. [Confirmed release decision](hf:e2d8bd345428a07629c7dedd11c4165504710d75e342100bf1b465658ffec36f)\n- **Enable batched uploads only for pilot accounts.** All other accounts keep individual uploads. Ryan omitted this. [Pilot approval](hf:2b4ced3943c5a62408c3d2fd670582fedcbc92234fed4c5ff91ff30aff5e8935)\n- **Keep the existing billing CSV schema.** Ryan omitted this. [Billing review](hf:8eb2d4d0a7fd5e2ef0cb571a3f2179e29239fe927e3832671992f34f9aa64ca7)",
+      "content_score": 8,
+      "grounding_score": 4,
+      "failed_content_criteria": [],
+      "failed_grounding_criteria": [],
+      "scoring_note": "Matches the confirmed decisions and both omissions. The full Ryan thread UUID is present inside an invalid hf: link. The exact ID earns g4 but the hyperlink itself does not resolve."
+    }
+  ]
+}

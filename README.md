@@ -81,6 +81,8 @@ python3 Tests/peer-smoke.py .build/debug/hereforth
 python3 Tests/twenty-peer-smoke.py .build/debug/hereforth
 ```
 
+There’s also a read-only Code Mode prototype in the checkout. An assistant can use one local JavaScript query to compare decisions from your chats with a teammate’s shared update. We tried the same question with individual MCP tools on Codex, Claude Code, and a local Qwen model. [Prototype and results](docs/code-mode.md)
+
 The roadmap covers live agent activity, team-hours schedules, and project-level usage reporting. [Implementation plan](docs/plan.md) · [Power and usage](docs/availability-and-usage.md) · [Integration research](docs/research.md) · [Remote access design](docs/remote-control.md)
 
 [UX guide](docs/ux.md) · [Contributor instructions](AGENTS.md) · [Release process](docs/releases.md) · [MIT license](LICENSE)
