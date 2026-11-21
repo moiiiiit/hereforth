@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Hereforth Updates</title>
+    <item>
+      <title>Hereforth 0.2.0</title>
+      <sparkle:version>20002</sparkle:version>
+      <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/moiiiiit/hereforth/releases/download/v0.2.0/Hereforth.dmg" sparkle:edSignature="xA2BpprYnuOmR3k2C76IzOAySSTELLvgW1S0lUGdzdXI/UMKeG6Fh96+7PDg9AATK69s/v43SC1Bk5tcAJ3dAQ==" length="4034148" type="application/x-apple-diskimage" />
+    </item>
+  </channel>
+</rss>
