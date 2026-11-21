@@ -36,6 +36,7 @@ struct ContextInbox: View {
                 } description: {
                     Text("When a teammate offers context to one of your sessions, you can review it here before it reaches that session.")
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 HSplitView {
                     List(selection: $selection) {
